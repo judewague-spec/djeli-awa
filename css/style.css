@@ -1,0 +1,303 @@
+/* Styles de l'application. Couleurs des matières et village : DIRECTION-ARTISTIQUE.md (étape 1c). */
+:root {
+  --fond: #FFF8EE;
+  --texte: #2B1A0E;
+  --accent: #7A3E12;
+  --accent-texte: #FFFFFF;
+  --taille-texte: 1.125rem;
+  /* Couleurs des matières : aussi dans js/village.js, qui les vérifie (contrastes AA, daltonisme). */
+  --maths: #3730A3;
+  --physique: #F5A300;
+  --chimie: #9C4DCC;
+  --svt: #4E9A2A;
+  --techno: #00737A;
+  --silhouette: #C9B8A3;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--texte);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--taille-texte);
+  line-height: 1.5;
+}
+
+main {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem 2rem;
+}
+
+main:focus { outline: none; }
+
+h1 { color: var(--accent); font-size: 2rem; margin: 0.5rem 0; }
+h2 { font-size: 1.35rem; margin-top: 2rem; }
+
+.accroche { font-size: 1.2rem; }
+
+.boutons { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+button {
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0.6rem 1.1rem;
+  border: 2px solid var(--accent);
+  border-radius: 0.75rem;
+  background: var(--accent);
+  color: var(--accent-texte);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:focus-visible { outline: 3px solid var(--texte); outline-offset: 3px; }
+
+.etat { margin-top: 2rem; font-size: 0.95rem; }
+
+#annonce {
+  margin: 0 auto;
+  max-width: 40rem;
+  padding: 0 1rem;
+  font-weight: 600;
+}
+
+/* ---------- Mission (étape 1b) ---------- */
+[hidden] { display: none !important; }
+h2:focus, h3:focus, h1:focus { outline: none; }
+.temps { font-size: 0.95rem; margin: 0.5rem 0 0; }
+.parole { background: #FFFFFF; border-left: 6px solid var(--accent); border-radius: 0.5rem; padding: 0.75rem 1rem; }
+.parole .qui { font-weight: 700; }
+.pied { margin-top: 2rem; }
+button.secondaire { background: transparent; color: var(--accent); }
+button:disabled { opacity: 0.55; cursor: default; }
+.decor { margin: 0 0 -1.5rem; }
+.decor-image { display: block; width: 100%; height: auto; max-height: 62vh; object-fit: cover; object-position: center 45%; border-radius: 0.75rem; }
+.decor + .parole { position: relative; margin: 0 0.5rem; }
+.dessin { margin: 1rem 0; text-align: center; }
+.dessin figcaption { font-size: 0.95rem; }
+.pizza { width: min(100%, 18rem); height: auto; display: block; margin: 0 auto; touch-action: manipulation; }
+.pizza-cadre .pizza { cursor: crosshair; }
+.pizza-assiette { fill: #EDE3D3; }
+.pizza-part { fill: #F2C14E; stroke: #B5651D; stroke-width: 3; }
+.pizza-part.mangee { fill: #FFFDF8; stroke: #7A3E12; stroke-dasharray: 6 4; }
+.pizza-pepperoni { fill: #B3261E; }
+.pizza-coupe { stroke: #5A2D0C; stroke-width: 2.5; }
+.pizza-etat { min-height: 3em; font-weight: 600; }
+.pizza-liste { border: 0; padding: 0; margin: 1rem 0 0; }
+.pizza-liste legend { font-weight: 600; margin-bottom: 0.5rem; }
+button[aria-pressed="true"] { background: var(--texte); border-color: var(--texte); }
+button[aria-pressed="true"]::before { content: "✓ "; }
+.enonce, .enonce-defi { font-size: 1.15rem; }
+.papier { font-style: italic; }
+.saisie { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 1rem 0; }
+.saisie label { width: 100%; }
+.saisie input { font: inherit; min-height: 48px; padding: 0.4rem 0.75rem; border: 2px solid var(--texte); border-radius: 0.5rem; width: 10rem; }
+.choix { flex-direction: column; align-items: stretch; }
+.juste { color: #1B5E20; font-weight: 700; }
+.faux { color: #8A1C1C; font-weight: 700; }
+.correction { background: #FFFFFF; border-radius: 0.5rem; padding: 0.75rem 1rem 0.75rem 2.25rem; }
+.grille, .auto-evaluation { border: 2px solid var(--accent); border-radius: 0.75rem; margin: 1rem 0; padding: 0.75rem 1rem; }
+.critere { display: flex; gap: 0.75rem; align-items: flex-start; margin: 0.5rem 0; }
+.critere input { width: 28px; height: 28px; flex: none; margin-top: 0.15rem; }
+.gain { font-weight: 700; font-size: 1.2rem; }
+
+/* ---------- Village et quartiers (étape 1c) ---------- */
+.image { display: block; width: 100%; height: auto; }
+.silhouette { background: #EFE4D4; border-radius: 1rem; position: relative; overflow: hidden; }
+
+.djeli { margin: 0.5rem auto; width: min(60%, 12rem); }
+.djeli .image { border-radius: 1rem; }
+.silhouette-djeli { aspect-ratio: 2 / 3; }
+/* Silhouette de Djéli Awa : une tête et des épaules, en attendant son image. */
+.silhouette-djeli span, .silhouette-djeli::before { position: absolute; left: 50%; transform: translateX(-50%); background: var(--silhouette); content: ""; }
+.silhouette-djeli::before { top: 14%; width: 34%; aspect-ratio: 1; border-radius: 50%; }
+.silhouette-djeli span { bottom: 0; width: 76%; height: 50%; border-radius: 45% 45% 0 0; }
+
+.plan { position: relative; margin: 1rem 0; }
+.plan-horizontal { width: min(calc(100vw - 2rem), 64rem); margin-left: 50%; transform: translateX(-50%); }
+.silhouette-village { aspect-ratio: 9 / 16; }
+.plan-horizontal .silhouette-village { aspect-ratio: 16 / 9; }
+/* Silhouette du village : un chemin en pointillés qui serpente, en attendant l'image. */
+.silhouette-village span { position: absolute; inset: 6% 18%; border: 6px dashed var(--silhouette); border-radius: 40%; }
+
+.quartiers { list-style: none; margin: 0; padding: 0; }
+.plan > .plan-fond .image { border-radius: 1rem; }
+.quartiers li { position: absolute; transform: translate(-50%, -50%); width: max-content; max-width: 40%; }
+.plan-horizontal .quartiers li { max-width: 20%; }
+
+/* Bouton compact (forme à gauche, deux lignes de texte) pour laisser voir le quartier ; au moins 48 pixels de haut. */
+button.quartier {
+  display: grid; grid-template-columns: auto 1fr; column-gap: 0.4rem; align-items: center; text-align: left;
+  width: 100%; min-height: 48px; min-width: 48px; padding: 0.3rem 0.6rem; line-height: 1.15;
+  background: var(--couleur); border-color: var(--texte); color: var(--couleur-texte);
+  box-shadow: 0 3px 0 rgba(43, 26, 14, 0.35);
+}
+.quartier-forme { grid-row: 1 / span 2; }
+.quartier-lieu { font-weight: 700; font-size: 0.95rem; }
+.quartier-matiere { font-weight: 400; font-size: 0.85rem; }
+/* Chaque matière a sa forme : la couleur n'est jamais le seul indice. */
+.quartier-forme { width: 1.4rem; height: 1.4rem; background: var(--couleur-texte); }
+.forme-losange .quartier-forme { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.forme-rond .quartier-forme { border-radius: 50%; }
+.forme-hexagone .quartier-forme { clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); }
+.forme-feuille .quartier-forme { border-radius: 0 70% 0 70%; }
+.forme-triangle .quartier-forme { clip-path: polygon(50% 5%, 100% 95%, 0 95%); }
+
+#titre-quartier { border-bottom: 6px solid var(--couleur, var(--accent)); padding-bottom: 0.25rem; }
+#quartier .parole { border-left-color: var(--couleur, var(--accent)); }
+
+/* ---------- Voix de Djéli Awa (étape 2) ---------- */
+.parole p { margin: 0; }
+.parole .reecouter, .retour-parle .reecouter, .pizza-etat + .reecouter, .accroche + .reecouter, #quartier .parole + .reecouter { margin-top: 0.5rem; }
+button.reecouter { min-height: 44px; padding: 0.3rem 0.9rem; font-size: 0.95rem; }
+button.reecouter::before { content: "\25B6\FE0E  "; }
+.retour-parle p { margin: 0; }
+.retour-parle.juste p { font-weight: 700; }
+#reglages { margin-top: 2rem; }
+.reglage-voix { border: 2px solid var(--accent); border-radius: 0.75rem; padding: 0.5rem 1rem; display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; }
+.reglage-voix legend { font-weight: 700; padding: 0 0.25rem; }
+.reglage-voix label { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; }
+.reglage-voix input { width: 24px; height: 24px; }
+
+/* ---------- Bloc « Les nombres » (étape 3) : chemin, séances, réflexion guidée, manipulations, dessins ---------- */
+.chemin { padding-left: 0; list-style: none; display: grid; gap: 0.6rem; }
+.chemin li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.chemin li .etat { margin: 0; }
+.chemin .fermee { color: #5A4636; padding: 0.4rem 0; border-bottom: 1px dashed var(--silhouette); }
+.reflexion li { margin: 0.5rem 0; }
+.savais-tu .parole { border-left-style: double; border-left-width: 8px; margin-top: 1rem; }
+.notion-source { font-size: 0.95rem; font-style: italic; }
+.indice { font-weight: 600; }
+.manip-etat { min-height: 3em; font-weight: 600; }
+.dessin-code, .thermometre, .crible-dessin, .gateau, .carrelage { width: min(100%, 20rem); height: auto; display: block; margin: 0 auto; touch-action: manipulation; }
+.thermometre { width: min(60%, 9rem); }
+.thermo-tube { fill: #FFFFFF; stroke: var(--texte); stroke-width: 2; }
+.thermo-boule, .thermo-liquide { fill: #B3261E; }
+.thermo-trait { stroke: var(--texte); stroke-width: 1.5; }
+.thermo-trait.zero { stroke-width: 4; }
+.thermo-nombre { font-size: 12px; fill: var(--texte); }
+.thermo-nombre.zero { font-weight: 700; font-size: 14px; }
+.thermo-depart { fill: var(--maths); }
+.thermo-legende { font-size: 10px; fill: var(--texte); }
+.thermo-curseur { display: block; width: min(100%, 20rem); min-height: 48px; margin: 0.5rem auto; }
+.crible-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(3rem, 1fr)); gap: 0.3rem; margin: 1rem 0; }
+.crible-case { min-width: 48px; padding: 0.3rem; background: #FFFFFF; color: var(--texte); border-color: var(--silhouette); }
+.crible-case.barre { text-decoration: line-through; text-decoration-thickness: 3px; color: #6B5A4A; background: #EFE4D4; }
+.crible-case.garde { border: 4px solid var(--maths); border-radius: 50%; font-weight: 800; }
+.crible-nombre { font-size: 12px; text-anchor: middle; fill: var(--texte); }
+.crible-nombre.barre { fill: #8C7B6A; }
+.crible-trait { stroke: #6B5A4A; stroke-width: 1.5; }
+.crible-garde { fill: none; stroke: var(--maths); stroke-width: 2.5; }
+.gateau-part { fill: #F2D9A0; stroke: var(--accent); stroke-width: 2; }
+.gateau-prise-fond { fill: #FFFDF8; }
+.gateau-hachure { stroke: var(--accent); stroke-width: 3; }
+.gateau-nom { font-size: 14px; font-weight: 700; fill: var(--texte); }
+.gateau-boutons .boutons { margin-bottom: 0.5rem; }
+.carreau { fill: #E9C79A; stroke: #7A3E12; stroke-width: 1.5; }
+.carreau.sombre { fill: #C98E52; }
+.paquet { fill: none; stroke: var(--accent); stroke-width: 2; }
+.paquet-reste { fill: none; stroke: #8A1C1C; stroke-width: 2; stroke-dasharray: 5 3; }
+.paquet-objet { fill: #F5A300; stroke: #7A3E12; stroke-width: 1; }
+.arbre-nombre { font-size: 14px; text-anchor: middle; font-weight: 700; fill: var(--texte); }
+.arbre-branche { stroke: var(--texte); stroke-width: 1.5; }
+.arbre-premier { fill: #FFFFFF; stroke: var(--maths); stroke-width: 2.5; }
+.echelle-axe { stroke: var(--texte); stroke-width: 2; }
+.echelle-trait { stroke: var(--texte); stroke-width: 1.5; }
+.echelle-point { fill: var(--maths); }
+.echelle-texte, .echelle-nom, .barre-nom { font-size: 12px; fill: var(--texte); }
+.barre-part { fill: #F2D9A0; stroke: var(--accent); stroke-width: 2; }
+.barre-part.autre { fill: #C9D3F2; stroke: var(--maths); }
+
+/* ---------- Bloc « La matière » : dessins et manipulations (étape 3, physique-chimie) ---------- */
+.particules, .balance, .echelle-ph, .atome, .tableau, .tube, .molecule, .melange { width: min(100%, 20rem); height: auto; display: block; margin: 0 auto; touch-action: manipulation; }
+.tube, .melange { width: min(60%, 11rem); }
+.recipient { fill: #FFFFFF; stroke: var(--texte); stroke-width: 2; }
+.particule { fill: #4A90C2; stroke: #1F4E79; stroke-width: 1.5; }
+.balance-pied { fill: #8C6A4F; }
+.balance-fleau, .balance-fil { stroke: var(--texte); stroke-width: 3; }
+.balance-plateau { fill: #E9C79A; stroke: var(--texte); stroke-width: 2; }
+.dessin-legende { font-size: 12px; text-anchor: middle; fill: var(--texte); }
+.dessin-petit { font-size: 10px; text-anchor: middle; fill: var(--texte); }
+.ph-acide { fill: #F4B9A8; stroke: var(--texte); }
+.ph-basique { fill: #B8C7F0; stroke: var(--texte); }
+.ph-neutre { stroke: var(--texte); stroke-width: 3; }
+.atome-nuage { fill: none; stroke: #6B5A4A; stroke-width: 1.5; stroke-dasharray: 5 4; }
+.noyau { fill: #F5D08A; stroke: var(--texte); stroke-width: 2; }
+.electron { fill: #FFFFFF; stroke: #1F4E79; stroke-width: 2; }
+.electron-signe { font-weight: 700; }
+.case-element { fill: #FFFFFF; stroke: #6B5A4A; stroke-width: 1.5; }
+.case-element.surligne { stroke: var(--maths); stroke-width: 4; fill: #EEF0FF; }
+.element-z { font-size: 9px; fill: var(--texte); }
+.element-symbole { font-size: 14px; font-weight: 700; text-anchor: middle; fill: var(--texte); }
+.tube-verre, .verre { fill: none; stroke: var(--texte); stroke-width: 2.5; }
+.liquide-clair, .eau { fill: #D6ECFA; }
+.liquide-trouble { fill: #E8E8E2; }
+.liquide-bleu { fill: #4A90C2; }
+.liquide-blanc { fill: #FFFFFF; stroke: #CCC; }
+.trouble { fill: #8C8C80; }
+.grain { fill: #FFFFFF; stroke: #6B5A4A; stroke-width: 1; }
+.atome-boule { stroke: var(--texte); stroke-width: 2; }
+.atome-c { fill: #4D4D4D; }
+.atome-h { fill: #FFFFFF; }
+.atome-o { fill: #E5554F; }
+.atome-n { fill: #4A6FD8; }
+.atome-lettre { font-size: 13px; font-weight: 700; text-anchor: middle; fill: var(--texte); paint-order: stroke; stroke: #FFFFFF; stroke-width: 2px; }
+.molecule-boutons .boutons { margin-bottom: 0.5rem; }
+
+/* ---------- Bloc SVT « Le corps humain et la santé » ---------- */
+.chaine, .courbe, .pouls { width: min(100%, 20rem); height: auto; display: block; margin: 0 auto; }
+.etiquette-barre { stroke: var(--texte); stroke-width: 1; }
+.etiquette-A { fill: #1E8F4E; } .etiquette-B { fill: #4FA83D; } .etiquette-C { fill: #A7C93B; } .etiquette-D { fill: #F2E03A; }
+.etiquette-E { fill: #F2B43A; } .etiquette-F { fill: #E8792B; } .etiquette-G { fill: #D7322A; }
+.etiquette-choisie { stroke-width: 4; }
+.etiquette-lettre { font-size: 15px; font-weight: bold; fill: #FFFFFF; stroke: #000000; stroke-width: 0.6; paint-order: stroke; text-anchor: middle; }
+.etiquette-fleche { fill: #1A1A1A; }
+.reparabilite-note { font-size: 26px; font-weight: bold; text-anchor: middle; fill: var(--texte); }
+.reparabilite-case { fill: #FFFFFF; stroke: var(--texte); stroke-width: 2; }
+.reparabilite-case.pleine { fill: #2F6FB3; }
+.aires-case { fill: #FFFFFF; stroke: var(--maths); stroke-width: 2; }
+.boite-corps { fill: #F2D9A0; stroke: var(--accent); stroke-width: 3; }
+.boite-couvercle { fill: #E0B868; stroke: var(--accent); stroke-width: 3; }
+.boite-texte { font-size: 34px; font-weight: bold; text-anchor: middle; fill: var(--texte); }
+.boite-cadre { cursor: pointer; max-width: 240px; margin: 0 auto; }
+.plateaux-cadre { max-width: 420px; margin: 0 auto; }
+.plateau-ligne, .plateau-pied { stroke: var(--texte); stroke-width: 3; }
+.plateau-boite { fill: #F2D9A0; stroke: var(--accent); stroke-width: 2; }
+.plateau-kilos { fill: #C9D3F2; stroke: var(--maths); stroke-width: 2; }
+.plateau-texte { font-size: 13px; font-weight: bold; text-anchor: middle; fill: var(--texte); }
+.circuit-fil { stroke: var(--texte); stroke-width: 2; fill: none; }
+.circuit-fil.epais { stroke-width: 4; }
+.circuit-lampe { fill: #FFFFFF; stroke: var(--texte); stroke-width: 2; }
+.circuit-lampe.allumee { fill: #F5C542; }
+.circuit-rayon { stroke: var(--accent); stroke-width: 2; }
+.circuit-cadre { max-width: 460px; margin: 0 auto; }
+.chromosome { fill: #F5C542; stroke: var(--texte); stroke-width: 2; }
+.chromosome.pere { fill: #FFFFFF; }
+.tableur-case { fill: #FFFFFF; stroke: var(--texte); stroke-width: 1; }
+.tableur-case.entete { fill: #F5C542; }
+.tableur-cadre { overflow-x: auto; }
+.tableur-table { border-collapse: collapse; margin: 0 auto; }
+.tableur-table th, .tableur-table td { border: 1px solid var(--texte); padding: 8px 12px; text-align: left; }
+.circuit-fil.coupe { stroke-dasharray: 6 6; }
+.facture-cadre { fill: #FFFFFF; stroke: var(--texte); stroke-width: 2; }
+.facture-texte { font-size: 13px; fill: var(--texte); }
+.facture-valeur { text-anchor: end; }
+.facture-total { font-weight: bold; }
+.chaine-case { fill: #FFFFFF; stroke: var(--svt); stroke-width: 2; }
+.chaine-fleche { fill: none; stroke: var(--texte); stroke-width: 2; }
+.courbe-ligne { fill: none; stroke: var(--svt); stroke-width: 3; }
+.coeur { fill: #E5554F; stroke: #7A1F1A; stroke-width: 2; }
+.pouls-nombre { font-size: 26px; font-weight: 700; text-anchor: middle; fill: #FFFFFF; }
+.pouls-unite { font-size: 11px; text-anchor: middle; fill: #FFFFFF; }
+button.pouls-gros { min-height: 96px; min-width: 12rem; font-size: 1.3rem; }
+
+/* Bloc « Mouvement et forces » : flèches de force et quadrillage. */
+.force-grille { stroke: #C9B79F; stroke-width: 1; }
+.force-objet { fill: #F2D9A0; stroke: var(--texte); stroke-width: 2; }
+.force-trait { fill: none; stroke: var(--texte); stroke-width: 3; }
+.force-point { fill: var(--texte); }

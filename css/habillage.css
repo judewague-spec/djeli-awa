@@ -1,0 +1,243 @@
+/* Habillage de l'application : couleurs des matières, cartes, bulles, chemin, récompense, mode sombre (DIRECTION-ARTISTIQUE.md).
+   Les contrastes AA de chaque couleur sont vérifiés par tests/habillage.test.js, en lisant ce fichier. */
+:root {
+  color-scheme: light dark;
+  --fond: #FFF8EE;
+  --carte: #FFFFFF;
+  --texte: #2B1A0E;
+  --texte-doux: #5A4636;
+  --ombre: 0 2px 10px rgba(74, 44, 16, 0.14);
+  --juste-fond: #E3F4DF;
+  --juste-texte: #14401A;
+  --juste-bord: #2E7D32;
+  --faux-fond: #FFF0D1;
+  --faux-texte: #4A2C00;
+  --faux-bord: #B86E00;
+  --couleur: #7A3E12;
+  --couleur-texte: #FFFFFF;
+  --couleur-accent: #7A3E12;
+  --couleur-pale: #F7E7D3;
+  --accent: var(--couleur-accent);
+  --accent-texte: var(--couleur-texte);
+  --chemin: #D9BE9B;
+}
+[data-matiere="maths"] { --couleur: #3730A3; --couleur-texte: #FFFFFF; --couleur-accent: #3730A3; --couleur-pale: #E9E8FA; }
+[data-matiere="physique"] { --couleur: #F5A300; --couleur-texte: #2B1A0E; --couleur-accent: #8A5A00; --couleur-pale: #FDEFCF; }
+[data-matiere="chimie"] { --couleur: #9C4DCC; --couleur-texte: #FFFFFF; --couleur-accent: #7B2FA8; --couleur-pale: #F3E7FA; }
+[data-matiere="svt"] { --couleur: #4E9A2A; --couleur-texte: #2B1A0E; --couleur-accent: #2F6F14; --couleur-pale: #E6F3DD; }
+[data-matiere="techno"] { --couleur: #00737A; --couleur-texte: #FFFFFF; --couleur-accent: #00666C; --couleur-pale: #D8F0F1; }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fond: #17110B;
+    --carte: #261C13;
+    --texte: #F7EDE0;
+    --texte-doux: #D6C6B4;
+    --ombre: 0 2px 10px rgba(0, 0, 0, 0.5);
+    --juste-fond: #17361B;
+    --juste-texte: #C9EFCB;
+    --juste-bord: #66BB6A;
+    --faux-fond: #3D2A08;
+    --faux-texte: #FFE2A8;
+    --faux-bord: #E0A030;
+    --couleur: #E7A860;
+    --couleur-texte: #2B1A0E;
+    --couleur-accent: #EDB477;
+    --couleur-pale: #3A2815;
+    --chemin: #5C4630;
+    --silhouette: #6B5A4A;
+  }
+  [data-matiere="maths"] { --couleur: #A5A1F5; --couleur-texte: #15123D; --couleur-accent: #B8B5F8; --couleur-pale: #26244A; }
+  [data-matiere="physique"] { --couleur: #F5A300; --couleur-texte: #2B1A0E; --couleur-accent: #F7B733; --couleur-pale: #3A2A0A; }
+  [data-matiere="chimie"] { --couleur: #CE9BEF; --couleur-texte: #2A1038; --couleur-accent: #D8ADF4; --couleur-pale: #33203F; }
+  [data-matiere="svt"] { --couleur: #8FCF6A; --couleur-texte: #10210A; --couleur-accent: #9BD978; --couleur-pale: #1F3314; }
+  [data-matiere="techno"] { --couleur: #4FC9D0; --couleur-texte: #04282B; --couleur-accent: #66D4DA; --couleur-pale: #0E3133; }
+  /* Les dessins gardent leurs couleurs de papier : ils ont des fonds blancs et des traits sombres. */
+  svg:not(.ui) { --texte: #2B1A0E; --accent: #7A3E12; --silhouette: #C9B8A3; background: #FFF8EE; border-radius: 0.75rem; }
+  .silhouette { background: #33271C; }
+  .crible-case { color: #2B1A0E; }
+  .crible-case.barre { color: #6B5A4A; }
+  .tableur-table { background: #FFF8EE; color: #2B1A0E; --texte: #2B1A0E; }
+}
+
+/* Pour le lecteur d'écran seulement. */
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* ---------- Mise en page ---------- */
+body { background: var(--fond); color: var(--texte); }
+main { padding-top: 0.5rem; }
+h1 { margin: 0; }
+.titre-accueil { color: var(--couleur-accent); font-size: 2.6rem; font-weight: 800; line-height: 1.1; margin: 0.25rem 0 0.5rem; text-align: center; }
+h2 { font-size: 1.75rem; line-height: 1.2; margin: 1.5rem 0 1rem; }
+h3 { font-size: 1.3rem; line-height: 1.25; margin: 1.5rem 0 0.75rem; }
+/* La bande à motif wax, sous les titres : elle prend la couleur de la matière. */
+h2::after, .bande-wax {
+  content: ""; display: block; height: 12px; margin-top: 0.5rem; background: var(--couleur);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='12'%3E%3Cpath d='M0 12 6 0l6 12zM24 0l6 6-6 6-6-6z'/%3E%3Ccircle cx='39' cy='6' r='3.5'/%3E%3Crect y='0' x='45' width='3' height='12'/%3E%3C/svg%3E") repeat-x left center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='12'%3E%3Cpath d='M0 12 6 0l6 12zM24 0l6 6-6 6-6-6z'/%3E%3Ccircle cx='39' cy='6' r='3.5'/%3E%3Crect y='0' x='45' width='3' height='12'/%3E%3C/svg%3E") repeat-x left center;
+}
+#titre-quartier { border-bottom: 0; padding-bottom: 0; }
+
+.accroche { background: var(--carte); border-radius: 1.25rem; box-shadow: var(--ombre); padding: 1rem 1.1rem; }
+.correction, .grille, .auto-evaluation, .reglage-voix, .carte, .question-test, .question-serie {
+  background: var(--carte); border: 0; border-radius: 1.25rem; box-shadow: var(--ombre); padding: 1rem 1.1rem;
+}
+.correction { padding-left: 2.25rem; margin: 1rem 0; }
+.question-test, .question-serie { margin: 1rem 0; }
+.grille legend, .auto-evaluation legend { float: left; width: 100%; font-weight: 700; margin-bottom: 0.5rem; padding: 0; }
+.grille legend + *, .auto-evaluation legend + * { clear: both; }
+.temps-corps { display: flow-root; }
+.temps-corps > * + * { margin-top: 1rem; }
+.pied { margin-top: 2rem; }
+.etat { color: var(--texte-doux); }
+figcaption { color: var(--texte-doux); }
+.dessin svg:not(.ui), .manipulation svg:not(.ui) { border-radius: 0.75rem; }
+
+/* ---------- Boutons : la couleur de la matière, 48 pixels au moins ---------- */
+button {
+  min-height: 48px; min-width: 48px; border: 2px solid var(--couleur); background: var(--couleur); color: var(--couleur-texte);
+  border-radius: 1rem; box-shadow: 0 2px 0 rgba(43, 26, 14, 0.25);
+}
+button:focus-visible { outline: 3px solid var(--texte); outline-offset: 3px; }
+button.secondaire { background: transparent; color: var(--couleur-accent); border-color: var(--couleur-accent); box-shadow: none; }
+button.reecouter { min-height: 48px; }
+.choix button { background: var(--carte); color: var(--texte); border-color: var(--couleur-accent); text-align: left; box-shadow: var(--ombre); }
+.choix button:disabled { opacity: 1; background: var(--couleur-pale); box-shadow: none; }
+button:disabled { opacity: 0.7; }
+button[aria-pressed="true"] { background: var(--texte); border-color: var(--texte); color: var(--fond); }
+.saisie input { background: var(--carte); color: var(--texte); border-color: var(--couleur-accent); border-radius: 0.75rem; min-height: 48px; }
+.saisie input:disabled { opacity: 0.8; }
+.critere { min-height: 48px; align-items: center; }
+.critere label { flex: 1; padding: 0.5rem 0; }
+.reglage-voix label { min-height: 48px; }
+.temps { color: var(--texte-doux); }
+
+/* Les boutons du village gardent la couleur de leur quartier. */
+button.quartier { border-color: var(--texte); }
+
+/* ---------- Barre du haut : Réglages, Quitter ---------- */
+.barre { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; max-width: 40rem; margin: 0 auto; padding: max(0.5rem, env(safe-area-inset-top)) 1rem 0; }
+.barre-droite { margin-left: auto; }
+button.discret { display: inline-flex; align-items: center; gap: 0.4rem; background: transparent; color: var(--couleur-accent); border: 2px solid transparent; box-shadow: none; padding: 0.3rem 0.6rem; font-weight: 600; font-size: 1rem; }
+button.discret:hover { border-color: var(--couleur-accent); }
+.icone { width: 1.4rem; height: 1.4rem; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+dialog.confirmation { background: var(--carte); color: var(--texte); border: 0; border-radius: 1.25rem; box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4); padding: 1.25rem; max-width: min(24rem, calc(100vw - 2rem)); }
+dialog.confirmation::backdrop { background: rgba(23, 17, 11, 0.6); }
+dialog.confirmation h2 { font-size: 1.4rem; margin: 0 0 0.5rem; }
+dialog.confirmation h2::after { display: none; }
+dialog.confirmation p { margin: 0 0 1rem; }
+
+/* ---------- Bulles de Djéli Awa ---------- */
+.parole { display: flex; align-items: flex-start; gap: 0.6rem; background: none; border: 0; padding: 0; border-radius: 0; }
+#quartier .parole { border: 0; }
+.portrait { flex: none; width: 56px; height: 56px; border-radius: 50%; overflow: hidden; border: 3px solid var(--couleur); background: var(--couleur-pale); margin-top: 0.25rem; }
+.portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; transform: scale(2.7); transform-origin: 50% var(--tete, 11%); }
+.bulle { position: relative; flex: 1; min-width: 0; background: var(--carte); border-radius: 1.25rem; box-shadow: var(--ombre); padding: 0.8rem 1rem; }
+.bulle::before { content: ""; position: absolute; left: -9px; top: 1.1rem; width: 0; height: 0; border-style: solid; border-width: 9px 11px 9px 0; border-color: transparent var(--carte) transparent transparent; }
+.parole .qui { color: var(--couleur-accent); }
+.bulle .reecouter { margin-top: 0.6rem; }
+.decor { margin: 0 0 -1.75rem; position: relative; }
+.decor-image { border-radius: 1.25rem; box-shadow: var(--ombre); }
+.decor + .parole { margin: 0 0.5rem; }
+.savais-tu .parole { border: 0; }
+.savais-tu .bulle { background: var(--couleur-pale); }
+.savais-tu .bulle::before { border-right-color: var(--couleur-pale); }
+
+/* ---------- Pastilles de la mission ---------- */
+.entete-mission { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.pastilles { display: flex; gap: 0.35rem; align-items: center; }
+.pastille { display: grid; place-items: center; width: 1.45rem; height: 1.45rem; border-radius: 50%; border: 2px solid var(--couleur-accent); font-size: 0.8rem; font-weight: 800; line-height: 1; color: transparent; }
+.pastille.faite { background: var(--couleur); border-color: var(--couleur); color: var(--couleur-texte); }
+.pastille.encours { width: 1.8rem; height: 1.8rem; background: var(--couleur-pale); color: var(--couleur-accent); outline: 2px solid var(--couleur-accent); outline-offset: 2px; }
+.temps { margin-top: 0.75rem; }
+
+/* ---------- Réponses ---------- */
+.retour-parle { border-radius: 1rem; border-left: 8px solid transparent; padding: 0.8rem 1rem; background: var(--carte); box-shadow: var(--ombre); }
+.retour-parle .reecouter { margin-top: 0.6rem; }
+.retour-parle.juste { background: var(--juste-fond); color: var(--juste-texte); border-left-color: var(--juste-bord); font-weight: 700; }
+.retour-parle.faux { background: var(--faux-fond); color: var(--faux-texte); border-left-color: var(--faux-bord); font-weight: 700; }
+.retour-parle .reecouter { color: inherit; border-color: currentColor; }
+.retour-parle .indice { font-weight: 600; background: var(--carte); color: var(--texte); border-radius: 0.75rem; padding: 0.6rem 0.8rem; margin: 0.6rem 0; }
+.retour-parle .marque { display: inline-block; font-size: 1.2em; margin-right: 0.25rem; }
+.indice { background: var(--faux-fond); color: var(--faux-texte); border-radius: 0.75rem; padding: 0.6rem 0.8rem; }
+.retour-parle.juste { animation: reponse-douce 0.45s ease-out; }
+.retour-parle.juste .marque { animation: coche 0.6s ease-out; }
+.retour-parle.faux { animation: apparait 0.3s ease-out; }
+@keyframes reponse-douce { from { transform: scale(0.97); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes coche { 0% { transform: scale(0); } 60% { transform: scale(1.35); } 100% { transform: scale(1); } }
+@keyframes apparait { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Chemin d'un bloc ---------- */
+.chemin-cadre { position: relative; margin: 1rem 0 2rem; }
+.chemin { position: relative; display: block; margin: 0; padding: 0.5rem 0; list-style: none; }
+.chemin-trace { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.chemin-trace path { fill: none; stroke: var(--chemin); stroke-width: 14; stroke-linecap: round; stroke-dasharray: 2 22; }
+.chemin li.etape { position: relative; display: flex; align-items: center; gap: 0.6rem; min-height: 6rem; padding: 0.35rem 0 0.35rem calc(var(--x) * 1%); margin: 0; border: 0; flex-wrap: nowrap; }
+.chemin li.etape.droite { flex-direction: row-reverse; padding: 0.35rem calc((100 - var(--x)) * 1%) 0.35rem 0; text-align: right; }
+.pierre { position: relative; flex: none; display: grid; place-items: center; width: 4rem; height: 4rem; margin: 0 -2rem; border-radius: 48% 52% 50% 50%; background: #B9A68F; border: 3px solid #6E5A46; color: #2B1A0E; font-weight: 800; box-shadow: 0 3px 0 rgba(43, 26, 14, 0.3); z-index: 1; }
+.etape.ouverte .pierre { background: var(--couleur); border-color: var(--couleur-accent); color: var(--couleur-texte); animation: brille 2.4s ease-in-out infinite; }
+.etape.faite .pierre { background: var(--carte); border-color: var(--couleur-accent); }
+.etape.fermee .pierre { background: #CFC3B4; }
+.pierre .ui { width: 2.4rem; height: 2.4rem; }
+.pierre .cadenas { fill: none; stroke: #2B1A0E; stroke-width: 2.4; stroke-linecap: round; }
+.etape-texte { flex: 1; min-width: 0; margin: 0 2.4rem; }
+.etape-nom { display: inline; }
+.etape button.pierre-bouton { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; padding: 0; margin: 0; border: 0; background: transparent; color: var(--texte); box-shadow: none; font-weight: 700; text-align: inherit; border-radius: 1rem; }
+.etape.droite button.pierre-bouton { flex-direction: row-reverse; }
+.etape .note { display: block; font-size: 0.9rem; font-weight: 400; color: var(--texte-doux); }
+.etape.fermee { color: var(--texte-doux); font-size: 0.95rem; }
+.etape.fermee .etape-nom { font-weight: 600; color: var(--texte); }
+.etape button.pierre-bouton:focus-visible { outline: 3px solid var(--texte); outline-offset: 2px; }
+.etape.a-reviser .pierre { outline: 3px dashed var(--couleur-accent); outline-offset: 3px; }
+@keyframes brille { 0%, 100% { box-shadow: 0 0 0 0 var(--couleur); } 50% { box-shadow: 0 0 14px 5px var(--couleur); } }
+
+/* ---------- Perles : chaque matière a sa forme ---------- */
+.p-maths { fill: #3730A3; } .p-physique { fill: #F5A300; } .p-chimie { fill: #9C4DCC; } .p-svt { fill: #4E9A2A; } .p-techno { fill: #00737A; } .p-brevet { fill: #7A3E12; }
+.perle-forme { stroke: #2B1A0E; stroke-width: 1.2; }
+.perle-vide { fill: var(--carte); stroke: var(--texte-doux); stroke-width: 1; }
+.perle-reflet { fill: #FFFFFF; opacity: 0.55; }
+
+/* ---------- Récompense ---------- */
+.scene-recompense { position: relative; background: var(--couleur-pale); border-radius: 1.25rem; box-shadow: var(--ombre); padding: 1rem; overflow: hidden; }
+.scene-haut { display: flex; align-items: flex-end; justify-content: center; gap: 1.25rem; }
+.scene-djeli { width: 38%; max-width: 9rem; flex: none; transform-origin: 50% 100%; animation: danse 1.1s ease-in-out 3; }
+.scene-djeli img { display: block; width: 100%; height: auto; border-radius: 1rem; }
+.compteur { display: flex; align-items: center; gap: 0.5rem; font-size: 2.2rem; font-weight: 800; color: var(--texte); font-variant-numeric: tabular-nums; }
+.compteur .ui { width: 2.6rem; height: 2.6rem; }
+.compteur-mot { display: block; font-size: 1rem; font-weight: 600; }
+.cauri-corps { fill: #F6E7CF; stroke: #6E5A46; stroke-width: 2; }
+.cauri-fente { fill: none; stroke: #6E5A46; stroke-width: 2; stroke-linecap: round; }
+.collier { display: block; width: 100%; height: auto; margin-top: 0.75rem; }
+.collier-fil { fill: none; stroke: var(--texte-doux); stroke-width: 1.5; }
+.perle-nouvelle { animation: perle-arrive 1.3s cubic-bezier(0.3, 1.3, 0.5, 1) 0.4s both; }
+.perle-halo { fill: none; stroke: var(--couleur-accent); stroke-width: 2; animation: halo 1.4s ease-out 1.5s both; }
+@keyframes perle-arrive { from { transform: translateY(-90px); opacity: 0; } 30% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes halo { from { opacity: 0.9; } to { opacity: 0; } }
+@keyframes danse { 0%, 100% { transform: rotate(0) translateY(0); } 25% { transform: rotate(-4deg) translateY(-6px); } 50% { transform: rotate(0) translateY(0); } 75% { transform: rotate(4deg) translateY(-6px); } }
+.gain { font-size: 1.25rem; }
+.confettis { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 20; }
+.confetti { position: absolute; top: -2rem; left: var(--x); width: var(--l); height: 1rem; border-radius: 2px; animation: tombe var(--d) linear var(--r) both; background-size: 10px 10px; }
+.wax-a { background-color: #3730A3; background-image: radial-gradient(circle at 50% 50%, #F5A300 28%, transparent 30%); }
+.wax-b { background-color: #F5A300; background-image: linear-gradient(45deg, #2B1A0E 25%, transparent 25%, transparent 75%, #2B1A0E 75%); }
+.wax-c { background-color: #9C4DCC; background-image: linear-gradient(90deg, #FFF8EE 30%, transparent 30%); }
+.wax-d { background-color: #4E9A2A; background-image: radial-gradient(circle at 50% 50%, #FFF8EE 25%, transparent 27%); }
+.wax-e { background-color: #00737A; background-image: linear-gradient(135deg, #F5A300 25%, transparent 25%, transparent 75%, #F5A300 75%); }
+@keyframes tombe { from { transform: translateY(0) rotate(0); opacity: 1; } 85% { opacity: 1; } to { transform: translateY(110vh) rotate(var(--t)); opacity: 0; } }
+
+/* ---------- Annonce : une petite carte, seulement quand aucune autre zone ne montre déjà le texte ---------- */
+#annonce { position: fixed; left: 50%; bottom: max(1rem, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(30rem, calc(100vw - 2rem)); max-width: none; background: var(--texte); color: var(--fond); border-radius: 1rem; padding: 0.7rem 1rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35); z-index: 10; pointer-events: none; }
+#annonce:empty { padding: 0; box-shadow: none; background: transparent; }
+#annonce.sr { position: absolute; left: auto; bottom: auto; transform: none; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; box-shadow: none; }
+
+/* ---------- Réglages ---------- */
+#reglages { margin-top: 0; }
+#reglages section { margin-top: 1.5rem; }
+.reglage-voix { gap: 1.5rem; }
+
+/* ---------- « Réduire les animations » : tout reste, rien ne bouge ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .confettis { display: none; }
+  .etape.ouverte .pierre { box-shadow: 0 0 0 4px var(--couleur-pale), 0 0 0 6px var(--couleur); }
+}

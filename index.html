@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#17110B">
+  <meta name="theme-color" content="#7A3E12">
+  <meta name="description" content="Maths, physique-chimie, SVT et technologie pour le brevet, un peu chaque jour.">
+  <title>Djéli Awa – sciences pour le brevet</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icones/icone-192.png">
+  <link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Djéli Awa">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/habillage.css">
+</head>
+<body>
+  <header class="barre">
+    <h1 class="sr">Djéli Awa</h1>
+    <div id="barre-gauche"></div>
+    <button type="button" id="bouton-reglages" class="discret barre-droite">Réglages</button>
+  </header>
+  <main id="vue" tabindex="-1">
+   <div id="accueil">
+    <p class="titre-accueil" aria-hidden="true">Djéli Awa</p>
+    <div id="djeli-accueil"></div>
+    <p class="accroche">Bienvenue au village&#8239;! Ici, les maths et les sciences partent de ta vie de tous les jours.</p>
+
+    <section aria-labelledby="titre-village">
+      <h2 id="titre-village">Le village</h2>
+      <p>Suis le chemin et choisis un quartier. Djéli Awa t’attend dans chacun.</p>
+      <div id="village"></div>
+    </section>
+
+    <p id="etat-hors-connexion" class="etat"></p>
+   </div>
+
+   <section id="quartier" aria-labelledby="titre-quartier" hidden>
+    <h2 id="titre-quartier" tabindex="-1"></h2>
+    <div id="djeli-quartier"></div>
+    <div class="parole"><div class="portrait" id="portrait-quartier" aria-hidden="true"></div><div class="bulle"><p><span class="qui">Djéli Awa : </span><span id="parole-quartier"></span></p></div></div>
+
+    <section id="missions" aria-labelledby="titre-jour" hidden>
+      <h3 id="titre-jour">Chaque jour</h3>
+      <div id="tests" class="boutons"></div>
+      <div class="boutons">
+        <button type="button" id="bouton-matin">Automatismes du matin</button>
+        <button type="button" id="bouton-soir">Papier du soir</button>
+      </div>
+      <p id="etat-test" class="etat"></p>
+      <p>Chaque mission dure environ 7 minutes, avec ton cahier. Une mission s’ouvre quand celles qu’il faut avant sont faites.</p>
+      <p id="etat-revision" class="etat"></p>
+      <div id="chemins"></div>
+    </section>
+    <p id="missions-bientot" hidden>Les missions de ce quartier arrivent bientôt.</p>
+
+    <div class="boutons pied">
+      <button type="button" id="bouton-retour-village" class="secondaire">Retour au village</button>
+    </div>
+   </section>
+   <section id="mission" aria-label="Mission" hidden></section>
+
+   <section id="reglages" aria-labelledby="titre-reglages" hidden>
+    <h2 id="titre-reglages" tabindex="-1">Réglages</h2>
+    <div id="reglage-voix"></div>
+    <section aria-labelledby="titre-sons">
+      <h2 id="titre-sons" tabindex="-1">Les sons</h2>
+      <p>Les sons d’un bloc se gardent quand tu l’ouvres. Tu peux aussi tout garder d’un coup, pour jouer sans internet.</p>
+      <div class="boutons">
+        <button type="button" id="bouton-tout-telecharger">Tout télécharger maintenant</button>
+        <button type="button" id="bouton-arreter-sons" class="secondaire" hidden>Arrêter</button>
+      </div>
+      <progress id="avance-sons" max="1" value="0" aria-hidden="true" hidden></progress>
+      <p id="etat-sons" class="etat" aria-live="polite"></p>
+    </section>
+    <section aria-labelledby="titre-sauvegarde">
+      <h2 id="titre-sauvegarde">Ma sauvegarde</h2>
+      <p>Garde une copie de ta progression dans un fichier, ou reprends une copie gardée.</p>
+      <div class="boutons">
+        <button type="button" id="bouton-exporter">Enregistrer une sauvegarde</button>
+        <button type="button" id="bouton-importer">Reprendre une sauvegarde</button>
+        <input type="file" id="fichier-import" accept=".json,application/json" hidden>
+      </div>
+    </section>
+    <div class="boutons pied">
+      <button type="button" id="bouton-fermer-reglages">Revenir</button>
+    </div>
+   </section>
+  </main>
+
+  <div id="annonce" role="status" aria-live="polite"></div>
+
+  <script src="js/hasard.js"></script>
+  <script src="js/stockage.js"></script>
+  <script src="js/revision.js"></script>
+  <script src="js/prerequis.js"></script>
+  <script src="js/mission.js"></script>
+  <script src="js/outils-contenu.js"></script>
+  <script src="js/programme-blocs.js"></script>
+  <script src="js/manipulations/commun.js"></script>
+  <script src="js/manipulations/pizza.js"></script>
+  <script src="js/manipulations/thermometre.js"></script>
+  <script src="js/manipulations/crible.js"></script>
+  <script src="js/manipulations/gateau.js"></script>
+  <script src="js/manipulations/carrelage.js"></script>
+  <script src="js/manipulations/dessins.js"></script>
+  <script src="js/manipulations/molecule.js"></script>
+  <script src="js/manipulations/melange.js"></script>
+  <script src="js/manipulations/pouls.js"></script>
+  <script src="js/manipulations/boite-mystere.js"></script>
+  <script src="js/manipulations/plateaux.js"></script>
+  <script src="js/manipulations/circuit.js"></script>
+  <script src="js/manipulations/chromosomes.js"></script>
+  <script src="js/manipulations/parente.js"></script>
+  <script src="js/manipulations/tableur.js"></script>
+  <script src="js/manipulations/routage.js"></script>
+  <script src="js/manipulations/machine.js"></script>
+  <script src="js/manipulations/point-graphique.js"></script>
+  <script src="js/manipulations/ranger.js"></script>
+  <script src="js/manipulations/engrenage.js"></script>
+  <script src="js/manipulations/simulation.js"></script>
+  <script src="js/manipulations/blocs.js"></script>
+  <script src="js/manipulations/dessins-donnees.js"></script>
+  <script src="js/manipulations/tonnerre.js"></script>
+  <script src="js/manipulations/pas-a-pas.js"></script>
+  <script src="js/manipulations/fleche-force.js"></script>
+  <script src="js/manipulations/balance-astres.js"></script>
+  <script src="js/manipulations/dessins-mouvement.js"></script>
+  <script src="js/manipulations/figure.js"></script>
+  <script src="js/manipulations/solide.js"></script>
+  <script src="js/manipulations/coupes.js"></script>
+  <script src="js/manipulations/transformation.js"></script>
+  <script src="js/seances.js"></script>
+  <script src="js/reserves.js"></script>
+  <script src="js/vue-mission.js"></script>
+  <script src="js/vue-seances.js"></script>
+  <script src="js/habillage.js"></script>
+  <script src="js/village.js"></script>
+  <script src="js/voix-phrases.js"></script>
+  <script src="js/typographie.js"></script>
+  <script src="js/sons.js"></script>
+  <script src="js/vue-sons.js"></script>
+  <script src="js/decors.js"></script>
+  <script src="js/voix.js"></script>
+  <script src="contenu/graphe-nombres.js"></script>
+  <script src="contenu/fractions-sens-egalite.js"></script>
+  <script src="contenu/multiples-diviseurs.js"></script>
+  <script src="contenu/criteres-divisibilite.js"></script>
+  <script src="contenu/nombres-premiers.js"></script>
+  <script src="contenu/decomposition-facteurs-premiers.js"></script>
+  <script src="contenu/pgcd.js"></script>
+  <script src="contenu/relatifs-addition.js"></script>
+  <script src="contenu/relatifs-multiplication.js"></script>
+  <script src="contenu/fractions-comparer.js"></script>
+  <script src="contenu/fractions-addition-positives.js"></script>
+  <script src="contenu/fractions-addition-negatives.js"></script>
+  <script src="contenu/fractions-multiplication-positives.js"></script>
+  <script src="contenu/fractions-multiplication-negatives.js"></script>
+  <script src="contenu/fractions-division.js"></script>
+  <script src="contenu/fraction-irreductible.js"></script>
+  <script src="contenu/puissances-10-positives.js"></script>
+  <script src="contenu/puissances-10-negatives.js"></script>
+  <script src="contenu/puissances-quelconques.js"></script>
+  <script src="contenu/puissances-produits-quotients.js"></script>
+  <script src="contenu/notation-scientifique.js"></script>
+  <script src="contenu/prefixes-ordres-grandeur.js"></script>
+  <script src="contenu/carres-parfaits.js"></script>
+  <script src="contenu/racine-carree.js"></script>
+  <script src="contenu/equation-x-carre.js"></script>
+  <script src="contenu/calculs-racines.js"></script>
+  <script src="contenu/nombres-irrationnels.js"></script>
+  <script src="contenu/ratio.js"></script>
+  <script src="contenu/test-depart-nombres.js"></script>
+  <script src="contenu/graphe-matiere.js"></script>
+  <script src="contenu/etats-matiere.js"></script>
+  <script src="contenu/changements-etat.js"></script>
+  <script src="contenu/corps-pur-melange.js"></script>
+  <script src="contenu/solubilite-miscibilite.js"></script>
+  <script src="contenu/composition-air.js"></script>
+  <script src="contenu/masse-volumique.js"></script>
+  <script src="contenu/conservation-masse.js"></script>
+  <script src="contenu/tests-caracteristiques.js"></script>
+  <script src="contenu/transformation-chimique.js"></script>
+  <script src="contenu/atomes-molecules.js"></script>
+  <script src="contenu/equation-reaction.js"></script>
+  <script src="contenu/tableau-periodique.js"></script>
+  <script src="contenu/combustions.js"></script>
+  <script src="contenu/acides-metaux.js"></script>
+  <script src="contenu/structure-atome.js"></script>
+  <script src="contenu/ions.js"></script>
+  <script src="contenu/ph.js"></script>
+  <script src="contenu/test-depart-matiere.js"></script>
+  <script src="contenu/graphe-corps-sante.js"></script>
+  <script src="contenu/effort-rythmes.js"></script>
+  <script src="contenu/effort-besoins.js"></script>
+  <script src="contenu/systeme-nerveux.js"></script>
+  <script src="contenu/neurones.js"></script>
+  <script src="contenu/hygiene-de-vie.js"></script>
+  <script src="contenu/drogues-dopage.js"></script>
+  <script src="contenu/digestion.js"></script>
+  <script src="contenu/enzymes.js"></script>
+  <script src="contenu/absorption.js"></script>
+  <script src="contenu/besoins-nutritionnels.js"></script>
+  <script src="contenu/microbes.js"></script>
+  <script src="contenu/hygiene-antiseptiques.js"></script>
+  <script src="contenu/antibiotiques.js"></script>
+  <script src="contenu/vaccination.js"></script>
+  <script src="contenu/immunite.js"></script>
+  <script src="contenu/puberte.js"></script>
+  <script src="contenu/appareils-reproducteurs.js"></script>
+  <script src="contenu/fecondation-grossesse.js"></script>
+  <script src="contenu/contraception-ist.js"></script>
+  <script src="contenu/test-depart-corps-sante.js"></script>
+  <script src="contenu/graphe-objets-societe.js"></script>
+  <script src="contenu/besoin-fonction.js"></script>
+  <script src="contenu/invention-innovation.js"></script>
+  <script src="contenu/principe-technique.js"></script>
+  <script src="contenu/familles-lignees.js"></script>
+  <script src="contenu/avantages-inconvenients.js"></script>
+  <script src="contenu/decouverte-societe.js"></script>
+  <script src="contenu/cahier-des-charges.js"></script>
+  <script src="contenu/normes-labels.js"></script>
+  <script src="contenu/notice.js"></script>
+  <script src="contenu/etiquette-energie.js"></script>
+  <script src="contenu/indice-reparabilite.js"></script>
+  <script src="contenu/impacts-environnement.js"></script>
+  <script src="contenu/bilan-carbone.js"></script>
+  <script src="contenu/cycle-de-vie.js"></script>
+  <script src="contenu/developpement-durable.js"></script>
+  <script src="contenu/mesurer-performance.js"></script>
+  <script src="contenu/protocole-evaluation.js"></script>
+  <script src="contenu/test-depart-objets-societe.js"></script>
+  <script src="contenu/graphe-calcul-lettres.js"></script>
+  <script src="contenu/lire-expression.js"></script>
+  <script src="contenu/remplacer-lettre.js"></script>
+  <script src="contenu/tester-egalite.js"></script>
+  <script src="contenu/developper.js"></script>
+  <script src="contenu/reduire.js"></script>
+  <script src="contenu/factoriser.js"></script>
+  <script src="contenu/double-distributivite.js"></script>
+  <script src="contenu/difference-carres.js"></script>
+  <script src="contenu/identites-remarquables.js"></script>
+  <script src="contenu/mettre-en-equation.js"></script>
+  <script src="contenu/resoudre-equation.js"></script>
+  <script src="contenu/equation-deux-cotes.js"></script>
+  <script src="contenu/equation-produit-nul.js"></script>
+  <script src="contenu/inequations.js"></script>
+  <script src="contenu/systemes.js"></script>
+  <script src="contenu/prouver-calcul.js"></script>
+  <script src="contenu/test-depart-calcul-lettres.js"></script>
+  <script src="contenu/graphe-electricite.js"></script>
+  <script src="contenu/circuit-simple.js"></script>
+  <script src="contenu/serie-derivation.js"></script>
+  <script src="contenu/intensite.js"></script>
+  <script src="contenu/tension.js"></script>
+  <script src="contenu/lois-serie.js"></script>
+  <script src="contenu/lois-derivation.js"></script>
+  <script src="contenu/loi-ohm.js"></script>
+  <script src="contenu/puissance-electrique.js"></script>
+  <script src="contenu/energie-electrique.js"></script>
+  <script src="contenu/facture-electricite.js"></script>
+  <script src="contenu/test-depart-electricite.js"></script>
+  <script src="contenu/graphe-mouvement-forces.js"></script>
+  <script src="contenu/trajectoire.js"></script>
+  <script src="contenu/vitesse-moyenne.js"></script>
+  <script src="contenu/nature-mouvement.js"></script>
+  <script src="contenu/relativite-mouvement.js"></script>
+  <script src="contenu/actions-mecaniques.js"></script>
+  <script src="contenu/force-newton.js"></script>
+  <script src="contenu/representer-force.js"></script>
+  <script src="contenu/gravitation.js"></script>
+  <script src="contenu/masse-poids.js"></script>
+  <script src="contenu/poids-lune.js"></script>
+  <script src="contenu/impesanteur.js"></script>
+  <script src="contenu/test-depart-mouvement-forces.js"></script>
+  <script src="contenu/graphe-vivant-evolution.js"></script>
+  <script src="contenu/besoins-cellules.js"></script>
+  <script src="contenu/transport-sang.js"></script>
+  <script src="contenu/role-micro-organismes.js"></script>
+  <script src="contenu/photosynthese.js"></script>
+  <script src="contenu/seves.js"></script>
+  <script src="contenu/reserves-plantes.js"></script>
+  <script src="contenu/reproduction-sexuee.js"></script>
+  <script src="contenu/reproduction-asexuee.js"></script>
+  <script src="contenu/populations.js"></script>
+  <script src="contenu/chromosomes-adn.js"></script>
+  <script src="contenu/genes-alleles.js"></script>
+  <script src="contenu/mutations.js"></script>
+  <script src="contenu/meiose-fecondation.js"></script>
+  <script src="contenu/genotype-phenotype.js"></script>
+  <script src="contenu/parente-classification.js"></script>
+  <script src="contenu/place-humain.js"></script>
+  <script src="contenu/fossiles.js"></script>
+  <script src="contenu/selection-naturelle.js"></script>
+  <script src="contenu/vie-ailleurs.js"></script>
+  <script src="contenu/test-depart-vivant-evolution.js"></script>
+  <script src="contenu/graphe-numerique-ia.js"></script>
+  <script src="contenu/fichiers-dossiers.js"></script>
+  <script src="contenu/bit-octet.js"></script>
+  <script src="contenu/tailles-fichiers.js"></script>
+  <script src="contenu/donnees-personnelles.js"></script>
+  <script src="contenu/traces-cookies.js"></script>
+  <script src="contenu/mots-de-passe.js"></script>
+  <script src="contenu/cyberviolence.js"></script>
+  <script src="contenu/usage-raisonne.js"></script>
+  <script src="contenu/numerique-societe.js"></script>
+  <script src="contenu/ia-apprentissage.js"></script>
+  <script src="contenu/ia-usages-biais.js"></script>
+  <script src="contenu/types-donnees.js"></script>
+  <script src="contenu/code-ascii.js"></script>
+  <script src="contenu/tableur-calculs.js"></script>
+  <script src="contenu/tableur-tris.js"></script>
+  <script src="contenu/reseau-local.js"></script>
+  <script src="contenu/adresse-ip.js"></script>
+  <script src="contenu/internet-routage.js"></script>
+  <script src="contenu/debit.js"></script>
+  <script src="contenu/test-depart-numerique-ia.js"></script>
+  <script src="contenu/graphe-proportionnalite.js"></script>
+  <script src="contenu/reconnaitre-proportionnalite.js"></script>
+  <script src="contenu/quatrieme-proportionnelle.js"></script>
+  <script src="contenu/grandeur-vitesse.js"></script>
+  <script src="contenu/grandeur-debit.js"></script>
+  <script src="contenu/dependance-formule.js"></script>
+  <script src="contenu/dependance-graphique.js"></script>
+  <script src="contenu/grandeur-masse-volumique.js"></script>
+  <script src="contenu/pourcentage-appliquer.js"></script>
+  <script src="contenu/coefficient-multiplicateur.js"></script>
+  <script src="contenu/pourcentage-evolution.js"></script>
+  <script src="contenu/fonction-machine.js"></script>
+  <script src="contenu/lire-fonction.js"></script>
+  <script src="contenu/fonction-lineaire.js"></script>
+  <script src="contenu/fonction-affine.js"></script>
+  <script src="contenu/droite-graphique.js"></script>
+  <script src="contenu/test-depart-proportionnalite.js"></script>
+  <script src="contenu/graphe-mesures-geometrie.js"></script>
+  <script src="contenu/angles-triangle.js"></script>
+  <script src="contenu/inegalite-triangulaire.js"></script>
+  <script src="contenu/parallelogramme.js"></script>
+  <script src="contenu/hauteurs-mediatrices.js"></script>
+  <script src="contenu/symetries.js"></script>
+  <script src="contenu/conversions-unites.js"></script>
+  <script src="contenu/unites-composees.js"></script>
+  <script src="contenu/aires-usuelles.js"></script>
+  <script src="contenu/volume-prisme-cylindre.js"></script>
+  <script src="contenu/volume-pyramide-cone.js"></script>
+  <script src="contenu/triangles-egaux.js"></script>
+  <script src="contenu/pythagore.js"></script>
+  <script src="contenu/pythagore-reciproque.js"></script>
+  <script src="contenu/thales-emboites.js"></script>
+  <script src="contenu/cosinus.js"></script>
+  <script src="contenu/translation.js"></script>
+  <script src="contenu/reperage-plan.js"></script>
+  <script src="contenu/reperage-pave.js"></script>
+  <script src="contenu/perspective-cavaliere.js"></script>
+  <script src="contenu/patrons-vues.js"></script>
+  <script src="contenu/agrandissement-reduction.js"></script>
+  <script src="contenu/sphere-boule.js"></script>
+  <script src="contenu/thales-papillon.js"></script>
+  <script src="contenu/thales-reciproque.js"></script>
+  <script src="contenu/triangles-semblables.js"></script>
+  <script src="contenu/sinus.js"></script>
+  <script src="contenu/tangente.js"></script>
+  <script src="contenu/rotation.js"></script>
+  <script src="contenu/homothetie.js"></script>
+  <script src="contenu/angle-inscrit.js"></script>
+  <script src="contenu/polygones-reguliers.js"></script>
+  <script src="contenu/reperage-sphere.js"></script>
+  <script src="contenu/sections-planes.js"></script>
+  <script src="contenu/test-depart-mesures-geometrie.js"></script>
+  <script src="contenu/graphe-planete-terre.js"></script>
+  <script src="contenu/systeme-solaire.js"></script>
+  <script src="contenu/plaques-tectoniques.js"></script>
+  <script src="contenu/seismes.js"></script>
+  <script src="contenu/volcans.js"></script>
+  <script src="contenu/eres-geologiques.js"></script>
+  <script src="contenu/meteo-climat.js"></script>
+  <script src="contenu/vents-courants.js"></script>
+  <script src="contenu/zones-climatiques.js"></script>
+  <script src="contenu/changements-climatiques.js"></script>
+  <script src="contenu/alea-vulnerabilite.js"></script>
+  <script src="contenu/prevention-risques.js"></script>
+  <script src="contenu/ressources-eau-sol.js"></script>
+  <script src="contenu/ressources-exploitees.js"></script>
+  <script src="contenu/activites-ecosystemes.js"></script>
+  <script src="contenu/biodiversite-gestion.js"></script>
+  <script src="contenu/test-depart-planete-terre.js"></script>
+  <script src="contenu/graphe-fonctionnement-objets.js"></script>
+  <script src="contenu/chaine-energie.js"></script>
+  <script src="contenu/flux-energie-objet.js"></script>
+  <script src="contenu/transmission-mouvement.js"></script>
+  <script src="contenu/rapport-engrenages.js"></script>
+  <script src="contenu/chaine-information.js"></script>
+  <script src="contenu/capteurs-interface.js"></script>
+  <script src="contenu/proprietes-materiaux.js"></script>
+  <script src="contenu/recyclage-materiaux.js"></script>
+  <script src="contenu/forme-materiau-procede.js"></script>
+  <script src="contenu/fiabilite-durabilite.js"></script>
+  <script src="contenu/depannage.js"></script>
+  <script src="contenu/schema-bloc.js"></script>
+  <script src="contenu/mesure-donnee.js"></script>
+  <script src="contenu/test-depart-fonctionnement-objets.js"></script>
+  <script src="contenu/graphe-donnees-probabilites.js"></script>
+  <script src="contenu/tableaux-donnees.js"></script>
+  <script src="contenu/diagramme-batons.js"></script>
+  <script src="contenu/diagramme-circulaire.js"></script>
+  <script src="contenu/effectifs-frequences.js"></script>
+  <script src="contenu/moyenne-simple.js"></script>
+  <script src="contenu/moyenne-ponderee.js"></script>
+  <script src="contenu/mediane-etendue.js"></script>
+  <script src="contenu/issues-evenements.js"></script>
+  <script src="contenu/calculer-probabilite.js"></script>
+  <script src="contenu/evenement-contraire.js"></script>
+  <script src="contenu/scratch-sequences.js"></script>
+  <script src="contenu/scratch-boucles.js"></script>
+  <script src="contenu/scratch-conditions.js"></script>
+  <script src="contenu/scratch-variables.js"></script>
+  <script src="contenu/histogrammes.js"></script>
+  <script src="contenu/deux-epreuves.js"></script>
+  <script src="contenu/frequence-probabilite.js"></script>
+  <script src="contenu/scratch-blocs-parallele.js"></script>
+  <script src="contenu/test-depart-donnees-probabilites.js"></script>
+  <script src="contenu/graphe-energie.js"></script>
+  <script src="contenu/formes-energie.js"></script>
+  <script src="contenu/conversions-energie.js"></script>
+  <script src="contenu/chaine-energetique.js"></script>
+  <script src="contenu/centrale-electrique.js"></script>
+  <script src="contenu/conservation-energie.js"></script>
+  <script src="contenu/unites-energie.js"></script>
+  <script src="contenu/co2-effet-serre.js"></script>
+  <script src="contenu/energie-position.js"></script>
+  <script src="contenu/energie-cinetique.js"></script>
+  <script src="contenu/freinage.js"></script>
+  <script src="contenu/test-depart-energie.js"></script>
+  <script src="contenu/graphe-concevoir-fabriquer.js"></script>
+  <script src="contenu/taches-planning.js"></script>
+  <script src="contenu/revue-projet.js"></script>
+  <script src="contenu/ecoconception.js"></script>
+  <script src="contenu/croquis-schemas.js"></script>
+  <script src="contenu/modelisation-3d.js"></script>
+  <script src="contenu/procedes-fabrication.js"></script>
+  <script src="contenu/securite-atelier.js"></script>
+  <script src="contenu/prototype-fonction.js"></script>
+  <script src="contenu/simulation-test.js"></script>
+  <script src="contenu/concevoir-objet.js"></script>
+  <script src="contenu/objets-communicants.js"></script>
+  <script src="contenu/protocole-test.js"></script>
+  <script src="contenu/test-depart-concevoir-fabriquer.js"></script>
+  <script src="contenu/graphe-signaux-univers.js"></script>
+  <script src="contenu/sources-lumiere.js"></script>
+  <script src="contenu/propagation-lumiere.js"></script>
+  <script src="contenu/vitesse-lumiere.js"></script>
+  <script src="contenu/annee-lumiere.js"></script>
+  <script src="contenu/propagation-son.js"></script>
+  <script src="contenu/vitesse-son.js"></script>
+  <script src="contenu/signal-information.js"></script>
+  <script src="contenu/galaxies-ordres.js"></script>
+  <script src="contenu/formation-systeme-solaire.js"></script>
+  <script src="contenu/origine-elements.js"></script>
+  <script src="contenu/frequence-son.js"></script>
+  <script src="contenu/test-depart-signaux-univers.js"></script>
+  <script src="contenu/graphe-programmer.js"></script>
+  <script src="contenu/prog-variables.js"></script>
+  <script src="contenu/prog-operateurs.js"></script>
+  <script src="contenu/prog-conditions.js"></script>
+  <script src="contenu/prog-et-ou-non.js"></script>
+  <script src="contenu/prog-boucles.js"></script>
+  <script src="contenu/prog-listes.js"></script>
+  <script src="contenu/prog-evenements.js"></script>
+  <script src="contenu/prog-entrees-sorties.js"></script>
+  <script src="contenu/algorithme-programme.js"></script>
+  <script src="contenu/programme-structure.js"></script>
+  <script src="contenu/ecriture-texte.js"></script>
+  <script src="contenu/test-depart-programmer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
