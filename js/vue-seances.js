@@ -168,6 +168,8 @@
       c.corps.append(parole(P['test-fin'] + ' ' + g, [P['test-fin'], g]));
       if (b && b.acquises) c.corps.append(el('p', { classe: 'note', texte: 'Ton chemin s’ouvre là où tu en es. Les notions déjà connues reviendront en révision dans quelques jours.' }));
       c.pied.append(bouton('Voir mon chemin', options.quitter));
+      // La suite proposée (consigne du 6 nov. 2026) : mission suivante, changer de matière, arrêter pour aujourd'hui.
+      if (options.suite) Promise.resolve(options.suite()).then((l) => { if (l && l.length) c.pied.replaceChildren(...l); }).catch(() => {});
       c.h.focus();
     }
 

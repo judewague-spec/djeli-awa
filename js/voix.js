@@ -42,7 +42,10 @@
 
   let sons = null;
   let actif = true;
-  let enCours = null;
+  let jeton = 0; // chaque nouvelle lecture annule celle d'avant
+  let lecteur = null; // un seul lecteur pour toute la visite : débloqué une fois au premier toucher (iPhone)
+  let urlEnCours = null;
+  let detacher = null; // retire les écouteurs du son d'avant, sur le lecteur commun
 
   function stockage() {
     try { return window.localStorage; } catch (e) { return null; }
@@ -53,9 +56,60 @@
     actif = lireReglage(stockage());
   }
 
-  function arreter() {
-    if (enCours) { enCours.pause(); enCours = null; }
+  /** Un court silence (WAV), pour débloquer le lecteur au premier geste : Safari ne laisse jouer qu'un lecteur déjà touché. */
+  function silence() {
+    const n = 800, b = new ArrayBuffer(44 + n), v = new DataView(b);
+    const s = (o, x) => { for (let i = 0; i < x.length; i++) v.setUint8(o + i, x.charCodeAt(i)); };
+    s(0, 'RIFF'); v.setUint32(4, 36 + n, true); s(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); s(36, 'data'); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+    return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
   }
+
+  function leLecteur() {
+    if (!lecteur) lecteur = new window.Audio();
+    return lecteur;
+  }
+  if (typeof document !== 'undefined') {
+    const debloquer = () => {
+      document.removeEventListener('pointerdown', debloquer, true);
+      document.removeEventListener('keydown', debloquer, true);
+      const a = leLecteur();
+      if (a.src) return; // déjà en train de lire : il est débloqué
+      a.src = silence();
+      a.play().catch(() => {});
+    };
+    document.addEventListener('pointerdown', debloquer, true);
+    document.addEventListener('keydown', debloquer, true);
+  }
+
+  /** L'adresse à lire. En ligne : le fichier, comme toujours (le service worker le sert s'il est gardé).
+      Sans internet : le son gardé dans le cache, octet pour octet, car certains navigateurs ne passent pas par
+      le service worker pour l'audio (consigne du 6 nov. 2026). */
+  async function sourceDe(src) {
+    if (navigator.onLine !== false) return src;
+    try {
+      if (window.caches) {
+        const r = await window.caches.match(src);
+        if (r && r.ok) return URL.createObjectURL(await r.blob());
+      }
+    } catch (e) { /* le fichier en ligne */ }
+    return src;
+  }
+
+  function liberer() {
+    if (urlEnCours && urlEnCours.startsWith('blob:')) URL.revokeObjectURL(urlEnCours);
+    urlEnCours = null;
+  }
+
+  function arreter() {
+    jeton++;
+    if (lecteur && !lecteur.paused) lecteur.pause();
+  }
+
+  /** Les tests et les essais peuvent suivre les lectures : journal({ son, etat : 'debut' | 'fin' | 'erreur' }). */
+  const noter = (son, etat) => { try { if (racineJournal.journal) racineJournal.journal({ son, etat }); } catch (e) { /* rien */ } };
+  const racineJournal = {};
 
   /** Lit une phrase de Djéli Awa, ou plusieurs phrases complètes l'une après l'autre (liste).
       force : lire même si la voix est coupée (bouton « Réécouter »). */
@@ -64,16 +118,40 @@
     const textes = [].concat(texte || []).filter(Boolean);
     if (!textes.length || (!actif && !force)) return;
     arreter();
-    const suivante = (i) => {
-      if (i >= textes.length) return;
+    const mien = jeton;
+    const suivante = async (i) => {
+      if (i >= textes.length || mien !== jeton) return;
       const src = sonDe(sons, textes[i]);
       if (!src) { suivante(i + 1); return; } // pas de son : le sous-titre seul
-      const audio = new window.Audio(src);
-      enCours = audio;
-      const fin = (ok) => { if (enCours !== audio) return; enCours = null; if (ok) suivante(i + 1); };
-      audio.addEventListener('error', () => fin(true));
-      audio.addEventListener('ended', () => fin(true));
-      audio.play().catch(() => fin(true)); // lecture refusée ou impossible : le sous-titre seul
+      const url = await sourceDe(src);
+      if (mien !== jeton) { if (url.startsWith('blob:')) URL.revokeObjectURL(url); return; }
+      const audio = leLecteur();
+      liberer();
+      urlEnCours = url;
+      const nom = src.split('/').pop();
+      let fini = false, secondEssai = false;
+      const fin = (ok) => {
+        if (fini) return;
+        fini = true;
+        if (detacher) detacher();
+        noter(nom, ok ? 'fin' : 'erreur');
+        if (mien !== jeton) return;
+        suivante(i + 1); // lecture refusée ou impossible : le sous-titre seul, puis la suite
+      };
+      const surFin = () => fin(true);
+      // Un son lu depuis le cache que le navigateur refuse : un second essai, par son adresse.
+      const surErreur = () => {
+        if (url.startsWith('blob:') && !secondEssai && !fini) { secondEssai = true; audio.src = src; audio.play().catch((e) => { if (e && e.name === 'NotAllowedError') fin(false); }); return; }
+        fin(false);
+      };
+      if (detacher) detacher();
+      audio.addEventListener('ended', surFin);
+      audio.addEventListener('error', surErreur);
+      detacher = () => { audio.removeEventListener('ended', surFin); audio.removeEventListener('error', surErreur); detacher = null; };
+      audio.src = url;
+      noter(nom, 'debut');
+      // Lecture refusée (geste manquant) : la suite ; une erreur du fichier passe par l'événement « error ».
+      audio.play().catch((e) => { if (e && e.name === 'NotAllowedError') fin(false); });
     };
     suivante(0);
   }
@@ -109,5 +187,5 @@
     conteneur.querySelectorAll('input').forEach((i) => i.addEventListener('change', () => { if (i.checked) regler(i.value === 'oui'); }));
   }
 
-  return { CLE, normaliser, table, sonDe, lireReglage, ecrireReglage, initialiser, lire, arreter, estActive, regler, boutonReecouter, monterReglage };
+  return Object.assign(racineJournal, { CLE, normaliser, table, sonDe, lireReglage, ecrireReglage, initialiser, lire, arreter, estActive, regler, boutonReecouter, monterReglage, journal: null });
 });

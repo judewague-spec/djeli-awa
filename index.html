@@ -19,7 +19,8 @@
   <header class="barre">
     <h1 class="sr">Djéli Awa</h1>
     <div id="barre-gauche"></div>
-    <button type="button" id="bouton-reglages" class="discret barre-droite">Réglages</button>
+    <button type="button" id="bouton-village" class="discret barre-droite">Village</button>
+    <button type="button" id="bouton-reglages" class="discret">Réglages</button>
   </header>
   <main id="vue" tabindex="-1">
    <div id="accueil">
@@ -28,7 +29,7 @@
     <p class="accroche">Bienvenue au village&#8239;! Ici, les maths et les sciences partent de ta vie de tous les jours.</p>
 
     <section aria-labelledby="titre-village">
-      <h2 id="titre-village">Le village</h2>
+      <h2 id="titre-village" tabindex="-1">Le village</h2>
       <p>Suis le chemin et choisis un quartier. Djéli Awa t’attend dans chacun.</p>
       <div id="village"></div>
     </section>
@@ -38,6 +39,9 @@
 
    <section id="quartier" aria-labelledby="titre-quartier" hidden>
     <h2 id="titre-quartier" tabindex="-1"></h2>
+    <div class="boutons">
+      <button type="button" id="bouton-retour-village-haut" class="secondaire">Retour au village</button>
+    </div>
     <div id="djeli-quartier"></div>
     <div class="parole"><div class="portrait" id="portrait-quartier" aria-hidden="true"></div><div class="bulle"><p><span class="qui">Djéli Awa : </span><span id="parole-quartier"></span></p></div></div>
 

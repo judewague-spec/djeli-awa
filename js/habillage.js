@@ -44,6 +44,7 @@
       reglages: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>',
       croix: '<path d="M6 6l12 12M18 6L6 18"/>',
       retour: '<path d="M15 5l-7 7 7 7"/>',
+      maison: '<path d="M3.5 11.5L12 4l8.5 7.5M6 10v9.5h4.5v-5h3v5H18V10"/>',
     }[nom];
     const s = document.createElementNS(SVG, 'svg');
     s.setAttribute('viewBox', '0 0 24 24');

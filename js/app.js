@@ -147,19 +147,81 @@
     document.getElementById('etat-test').textContent = notes.join(' ');
   }
 
-  function ouvrirZone() {
+  // ---------- Historique : chaque écran ajoute une entrée ; le Retour du téléphone remonte d'un écran (consigne du 6 nov. 2026) ----------
+  const pile = []; // écrans ouverts au-dessus du village : 'quartier', 'zone' (mission, test, séance), 'reglages'
+  let apresRetour = null; // ce que fait le prochain retour dans l'historique, quand c'est l'application qui remonte
+  let demanderQuitter = null; // pendant une mission ou un test : la question « Quitter ? » ; rend une promesse oui / non
+  let fermerLaZone = null; // ferme la zone ouverte, comme son bouton Quitter
+  let enQuestion = false; // la question « Quitter ? » est posée
+  try { history.replaceState({ djeli: 0 }, ''); } catch (e) { /* sans historique */ }
+  function empiler(nom) { pile.push(nom); try { history.pushState({ djeli: pile.length }, ''); } catch (e) { /* sans historique */ } }
+  /** Remonte de n écrans dans l'historique, puis fait action. */
+  function remonter(n, action) {
+    n = Math.min(n, pile.length);
+    if (!n) { action(); return; }
+    pile.splice(pile.length - n, n);
+    apresRetour = action;
+    try { history.go(-n); } catch (e) { /* sans historique : le filet ci-dessous agit */ }
+    // Filet : si le navigateur ne rend pas la main, l'action se fait quand même.
+    setTimeout(() => { if (apresRetour === action) { apresRetour = null; action(); } }, 800);
+  }
+  window.addEventListener('popstate', () => {
+    if (apresRetour) { const a = apresRetour; apresRetour = null; a(); return; }
+    const haut = pile.pop();
+    if (haut === 'reglages') fermerReglagesEcran();
+    else if (haut === 'zone') {
+      empiler('zone'); // on reste, le temps de demander : rien de ce qui est enregistré n'est perdu
+      if (enQuestion) return; // un second Retour pendant la question ne la repose pas
+      enQuestion = true;
+      (demanderQuitter ? demanderQuitter() : Promise.resolve(true)).then((oui) => { enQuestion = false; if (oui && fermerLaZone) fermerLaZone(); });
+    } else if (haut === 'quartier') retourVillageEcran();
+  });
+
+  function ouvrirZone(quitter, focusId) {
+    demanderQuitter = quitter || null;
+    fermerLaZone = () => fermerZone(focusId);
     zoneQuartier.hidden = true;
     zoneMission.hidden = false;
+    empiler('zone');
     window.scrollTo(0, 0);
   }
-  function fermerZone(focusId) {
+  /** Ferme la zone ; puisVillage : on va ensuite au village ; ensuite : une action de plus (mission suivante, mot de fin). */
+  function fermerZone(focusId, puisVillage, ensuite) {
+    demanderQuitter = null;
+    fermerLaZone = null;
     window.Voix.arreter();
-    zoneMission.hidden = true;
-    zoneMission.innerHTML = '';
-    document.getElementById('barre-gauche').replaceChildren();
-    annonce.textContent = '';
-    zoneQuartier.hidden = false;
-    montrerRevision().then(() => { const b = document.querySelector(focusId); if (b) b.focus(); });
+    remonter(puisVillage ? pile.length : 1, () => {
+      zoneMission.hidden = true;
+      zoneMission.innerHTML = '';
+      document.getElementById('barre-gauche').replaceChildren();
+      annonce.textContent = '';
+      if (puisVillage) retourVillageEcran(true);
+      else {
+        zoneQuartier.hidden = false;
+        montrerRevision().then(() => { const b = focusId && document.querySelector(focusId); if (b) b.focus(); else if (!ensuite) titreQuartier.focus(); });
+      }
+      if (ensuite) ensuite();
+    });
+  }
+
+  /** La suite proposée à la fin d'une mission ou d'un test : mission suivante, changer de matière, arrêter pour aujourd'hui. */
+  function boutonsDeSuite(prochaine) {
+    const b = (texte, action, classe) => { const x = document.createElement('button'); x.type = 'button'; x.textContent = texte; if (classe) x.className = classe; x.addEventListener('click', action); return x; };
+    const l = [];
+    if (prochaine) l.push(b('Mission suivante', () => fermerZone(null, false, () => lancerMission(prochaine))));
+    l.push(b('Changer de matière', () => fermerZone(null, true)));
+    l.push(b('Arrêter pour aujourd’hui', () => fermerZone(null, true, () => dire('C’est noté : ta progression est gardée. À bientôt !')), 'secondaire'));
+    return l;
+  }
+  /** La prochaine mission ouverte du chemin d'un bloc, pas encore faite (sauf celle qu'on vient de finir). */
+  async function prochaineMission(bloc, sauf) {
+    const etat = await etatOuVide();
+    const acquises = Object.keys(etat.progression.notions).filter((id) => etat.progression.notions[id].acquise).concat(sauf ? [sauf] : []);
+    const graphe = GRAPHES.find((g) => g.bloc === bloc);
+    if (!graphe) return null;
+    const ouvertes = new Set(window.Prerequis.ouvertes(graphe, acquises));
+    const g = graphe.notions.find((x) => x.id !== sauf && ouvertes.has(x.id) && NOTIONS[x.id] && !etat.cartes[x.id] && !acquises.includes(x.id));
+    return g ? NOTIONS[g.id] : null;
   }
 
   /** Les notions déjà vues : acquises au test ou faites en mission. */
@@ -191,6 +253,8 @@
 
   function ouvrirQuartier(id) {
     const q = V.quartier(id);
+    if (!pile.includes('quartier')) empiler('quartier');
+    document.title = q.lieu + ', ' + q.matiere.toLowerCase() + ' – Djéli Awa';
     quartierOuvert = id;
     window.Habillage.entrerMatiere(id);
     document.getElementById('portrait-quartier').replaceChildren(window.Habillage.portrait().firstChild);
@@ -209,13 +273,31 @@
     titreQuartier.focus();
   }
 
-  function retourVillage() {
+  const TITRE_PAGE = document.title;
+  /** Montre le village. titre : le focus va sur le titre du village (on change de matière), sinon sur le quartier quitté. */
+  function retourVillageEcran(titre) {
     Voix.arreter();
     window.Habillage.entrerMatiere(null);
+    document.title = TITRE_PAGE;
     zoneQuartier.hidden = true;
     accueil.hidden = false;
-    const b = document.querySelector('[data-quartier="' + quartierOuvert + '"]');
-    if (b) b.focus();
+    window.scrollTo(0, 0);
+    const b = !titre && document.querySelector('[data-quartier="' + quartierOuvert + '"]');
+    if (b) b.focus(); else document.getElementById('titre-village').focus();
+  }
+  function retourVillage() { remonter(pile.length, () => retourVillageEcran()); }
+
+  /** Le bouton Village de la barre du haut, toujours là : pendant une mission ou un test, il demande d'abord « Quitter ? ». */
+  async function allerAuVillage() {
+    if (!pageReglages.hidden) await new Promise((ok) => remonter(1, () => { fermerReglagesEcran(true); ok(); }));
+    if (!zoneMission.hidden) {
+      const oui = demanderQuitter ? await demanderQuitter() : true;
+      if (oui) fermerZone(null, true);
+      return;
+    }
+    if (!zoneQuartier.hidden) { remonter(pile.length, () => retourVillageEcran(true)); return; }
+    window.scrollTo(0, 0);
+    document.getElementById('titre-village').focus();
   }
 
   // ---------- Page de réglages : elle s'ouvre par-dessus l'écran en cours, et y revient sans rien perdre ----------
@@ -226,6 +308,7 @@
   const vueSons = window.VueSons.monter();
   boutonReglages.addEventListener('click', () => {
     Voix.arreter();
+    empiler('reglages');
     cachesParReglages = [accueil, zoneQuartier, zoneMission].filter((z) => !z.hidden);
     cachesParReglages.forEach((z) => { z.hidden = true; });
     document.getElementById('barre-gauche').hidden = true;
@@ -235,16 +318,21 @@
     document.getElementById('titre-reglages').focus();
     vueSons.rafraichir();
   });
-  document.getElementById('bouton-fermer-reglages').addEventListener('click', () => {
+  function fermerReglagesEcran(sansFocus) {
     pageReglages.hidden = true;
     cachesParReglages.forEach((z) => { z.hidden = false; });
     document.getElementById('barre-gauche').hidden = false;
     boutonReglages.hidden = false;
-    boutonReglages.focus();
-  });
+    if (!sansFocus) boutonReglages.focus();
+  }
+  document.getElementById('bouton-fermer-reglages').addEventListener('click', () => remonter(1, () => fermerReglagesEcran()));
+  const boutonVillage = document.getElementById('bouton-village');
+  boutonVillage.prepend(window.Habillage.icone('maison'));
+  boutonVillage.addEventListener('click', allerAuVillage);
 
   V.dessiner(document.getElementById('village'), ouvrirQuartier);
   document.getElementById('bouton-retour-village').addEventListener('click', retourVillage);
+  document.getElementById('bouton-retour-village-haut').addEventListener('click', retourVillage);
 
   /** Le test de départ d'un bloc : il se coupe et reprend à l'étape suivante. */
   // ---------- Sons du bloc : gardés à son ouverture ; sans internet, le bloc se joue avec les sous-titres ----------
@@ -263,7 +351,7 @@
     ouvrirSonsDuBloc(bloc);
     const etat = await etatOuVide();
     const t0 = etat.tests[bloc];
-    ouvrirZone();
+    ouvrirZone(() => window.Habillage.confirmer('Quitter le test ?', 'Ce que tu as déjà fait est gardé : tu reprendras à l’étape suivante.', 'Quitter', 'Continuer le test'), '[data-test="' + bloc + '"]');
     window.VueSeances.lancerTest(zoneMission, {
       tour: TESTS[bloc],
       graphe: window.Contenu.graphes[bloc],
@@ -282,6 +370,7 @@
         return b;
       },
       quitter() { fermerZone('[data-test="' + bloc + '"]'); },
+      async suite() { return boutonsDeSuite(await prochaineMission(bloc)); },
     });
   }
 
@@ -291,7 +380,7 @@
     const etapes = {};
     for (const n of vues) etapes[n.id] = window.Mission.etapeVocabulaire(Math.max(0, (etat.progression.notions[n.id].missions || 0) - 1));
     const items = mode === 'matin' ? window.Seances.serieDuMatin(vues, Date.now()) : window.Seances.serieDuSoir(vues, Date.now(), etapes);
-    ouvrirZone();
+    ouvrirZone(null, '#bouton-' + mode);
     window.VueSeances.lancerSerie(zoneMission, { mode, items, quitter() { fermerZone('#bouton-' + mode); } });
   }
   document.getElementById('bouton-matin').addEventListener('click', () => lancerSerie('matin'));
@@ -302,8 +391,9 @@
     const etat = await etatOuVide();
     const db = etat.db;
     const suivi = etat.progression.notions[notion.id] || { missions: 0 };
-    ouvrirZone();
-    window.VueMission.lancer(zoneMission, {
+    let vue = null;
+    ouvrirZone(() => (vue ? vue.demanderQuitter() : Promise.resolve(true)), '[data-notion="' + notion.id + '"]');
+    vue = window.VueMission.lancer(zoneMission, {
       notion,
       etape: window.Mission.etapeVocabulaire(suivi.missions),
       aujourdhui: R.jourDe(),
@@ -325,6 +415,7 @@
         } catch (e) { dire('Ta progression n’a pas pu être enregistrée.'); }
       },
       surFin() { fermerZone('[data-notion="' + notion.id + '"]'); },
+      async suite() { return boutonsDeSuite(await prochaineMission(notion.bloc, notion.id)); },
     });
   }
 

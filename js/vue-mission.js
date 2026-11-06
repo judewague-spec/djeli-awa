@@ -63,6 +63,12 @@
 
     let termine = false; // la mission est finie : plus rien à perdre en la quittant
 
+    /** « Quitter la mission ? » : rend une promesse oui / non ; une mission finie se quitte sans question. */
+    function demanderQuitter() {
+      if (termine) { window.Voix.arreter(); return Promise.resolve(true); }
+      return window.Habillage.confirmer('Quitter la mission ?', 'Tu reprendras cette mission au début.', 'Quitter', 'Continuer la mission').then((oui) => { if (oui) window.Voix.arreter(); return oui; });
+    }
+
     function afficher() {
       const t = M.tempsCourant(m);
       const c = M.contenu(m);
@@ -74,10 +80,7 @@
       nomTemps.append(el('span', { classe: 'sr', texte: ' · temps ' + t.numero + ' sur ' + t.total }));
       conteneur.appendChild(nomTemps);
       const barre = options.barre || conteneur;
-      const quitter = bouton('Quitter', () => {
-        if (termine) { window.Voix.arreter(); options.surFin(null); return; }
-        window.Habillage.confirmer('Quitter la mission ?', 'Tu reprendras cette mission au début.', 'Quitter', 'Continuer la mission').then((oui) => { if (oui) { window.Voix.arreter(); options.surFin(null); } });
-      }, 'discret');
+      const quitter = bouton('Quitter', () => { demanderQuitter().then((oui) => { if (oui) options.surFin(null); }); }, 'discret');
       quitter.setAttribute('aria-label', 'Quitter la mission');
       quitter.prepend(window.Habillage.icone('croix'));
       barre.replaceChildren(quitter);
@@ -265,9 +268,10 @@
           const dites = [phrase].concat(dicton || []);
           const bloc = retourParle('', phrase, dites);
           if (dicton) bloc.insertBefore(el('p', { classe: 'dicton', texte: dicton }), bloc.lastChild);
-          corps.append(bloc, el('p', { classe: 'note', texte: M.PHRASES.note(jourEnLettres(fin.carte.echeance)) }),
-            el('div', { classe: 'boutons' }, [bouton('Retour au quartier', () => options.surFin(fin))]));
-          options.enregistrer(fin);
+          const suite = el('div', { classe: 'boutons suite' }, [bouton('Retour au quartier', () => options.surFin(fin))]);
+          corps.append(bloc, el('p', { classe: 'note', texte: M.PHRASES.note(jourEnLettres(fin.carte.echeance)) }), suite);
+          // La suite proposée (consigne du 6 nov. 2026) : mission suivante, changer de matière, arrêter pour aujourd'hui.
+          Promise.resolve(options.enregistrer(fin)).then(() => (options.suite ? options.suite(fin) : null)).then((l) => { if (l && l.length) suite.replaceChildren(...l); }).catch(() => {});
           dire(dites.join(' '), dites);
         }));
       }
@@ -275,6 +279,8 @@
     }
 
     afficher();
+    // Pour le Retour du téléphone : la même question que le bouton Quitter (consigne du 6 nov. 2026).
+    Object.defineProperty(m, 'demanderQuitter', { value: demanderQuitter, enumerable: false });
     return m;
   }
 

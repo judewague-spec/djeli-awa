@@ -5,7 +5,7 @@
    Changer VERSION à chaque publication : l'ancienne coquille est remplacée ; seuls les sons dont le fichier a changé sont retirés. */
 'use strict';
 
-const VERSION = 'v76';
+const VERSION = 'v77';
 const COQUILLE = 'coquille-' + VERSION;
 
 const FICHIERS = [
@@ -568,10 +568,30 @@ const FICHIERS = [
   'voix/app/serie-tu-es-lancee-rien-ne-t-arrete.mp3',
 ];
 
+/** Garde la coquille, fichier par fichier, tels quels. Un refus passager du serveur (503, réseau) est réessayé 3 fois,
+    après 1, 3 et 9 secondes : un seul fichier en erreur ne fait plus échouer toute l'installation (consigne du 6 nov. 2026). */
+async function garderCoquille() {
+  const c = await caches.open(COQUILLE);
+  let i = 0;
+  const un = async (f) => {
+    for (let k = 0; ; k++) {
+      try {
+        const r = await fetch(new Request(f, { cache: 'reload' }));
+        if (!r.ok) throw new Error(f + ' : ' + r.status);
+        await c.put(f, r);
+        return;
+      } catch (e) {
+        if (k >= 3) throw e;
+        await new Promise((ok) => setTimeout(ok, [1000, 3000, 9000][k]));
+      }
+    }
+  };
+  const ouvrier = async () => { while (i < FICHIERS.length) await un(FICHIERS[i++]); };
+  await Promise.all(Array.from({ length: 6 }, ouvrier));
+}
+
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(COQUILLE)
-    .then((c) => c.addAll(FICHIERS.map((f) => new Request(f, { cache: 'reload' }))))
-    .then(() => self.skipWaiting()));
+  e.waitUntil(garderCoquille().then(() => self.skipWaiting()));
 });
 
 /** Retire des caches de sons ceux dont le fichier a changé ou n'existe plus : les autres restent, sans téléchargement. */
@@ -597,6 +617,18 @@ self.addEventListener('activate', (e) => {
     .then(() => self.clients.claim()));
 });
 
+/** Une demande partielle (Range: bytes=a-b) reçoit la tranche des octets gardés, en 206 ; sinon, le son entier. */
+async function partie(rep, range) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(range || '');
+  if (!m) return rep;
+  const octets = await rep.arrayBuffer();
+  const taille = octets.byteLength;
+  let debut = m[1] === '' ? Math.max(0, taille - Number(m[2])) : Number(m[1]);
+  let fin = m[1] !== '' && m[2] !== '' ? Math.min(Number(m[2]), taille - 1) : taille - 1;
+  if (debut >= taille || debut > fin) return new Response(null, { status: 416, headers: { 'Content-Range': 'bytes */' + taille } });
+  return new Response(octets.slice(debut, fin + 1), { status: 206, headers: { 'Content-Type': rep.headers.get('Content-Type') || 'audio/mpeg', 'Content-Length': String(fin - debut + 1), 'Content-Range': 'bytes ' + debut + '-' + fin + '/' + taille, 'Accept-Ranges': 'bytes' } });
+}
+
 // Cache d'abord, réseau ensuite ; une page demandée hors connexion reçoit l'accueil.
 // Une image trouvée sur le réseau est gardée pour la suite.
 self.addEventListener('fetch', (e) => {
@@ -604,14 +636,18 @@ self.addEventListener('fetch', (e) => {
   const son = new URL(e.request.url).pathname.includes('/voix/app/');
   // Le téléchargement des sons (js/sons.js) va droit au réseau ; chercher dans des milliers de sons à chaque fichier le ralentirait.
   if (son && e.request.cache === 'no-cache') return;
-  e.respondWith(caches.match(e.request, { ignoreSearch: !son }).then((r) => r || fetch(e.request).then((rep) => {
+  // Les fichiers de la page sont cherchés dans la coquille seule : chercher aussi parmi les milliers de sons gardés, en ignorant
+  // « ?… », rendait chaque chargement très lent une fois tout téléchargé (6 nov. 2026). Un son est cherché à son adresse exacte.
+  const trouve = son ? caches.match(e.request).then((r) => (r ? partie(r, e.request.headers.get('Range')) : r))
+    : caches.open(COQUILLE).then((c) => c.match(e.request, { ignoreSearch: true }));
+  e.respondWith(trouve.then((r) => r || fetch(e.request).then((rep) => {
     if (rep.ok && new URL(e.request.url).pathname.includes('/images/')) {
       const copie = rep.clone();
       caches.open(COQUILLE).then((c) => c.put(e.request, copie));
     }
     return rep;
   }).catch(() => {
-    if (e.request.mode === 'navigate') return caches.match('index.html');
+    if (e.request.mode === 'navigate') return caches.match('index.html', { cacheName: COQUILLE });
     return Response.error();
   })));
 });
