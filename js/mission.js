@@ -99,7 +99,8 @@
 
   /** Crée une mission. options : graine (hasard reproductible), etape (vocabulaire, 1 à 3), nbExercices. */
   function creer(notion, options = {}) {
-    const alea = Hasard.creer(options.graine === undefined ? Date.now() : options.graine);
+    const graine = options.graine === undefined ? Date.now() : options.graine;
+    const alea = Hasard.creer(graine);
     const etape = options.etape || 1;
     const ctx = { alea, etape, mot: (cle) => mot(notion, cle, etape), pgcd };
     const nb = options.nbExercices || 5;
@@ -107,12 +108,14 @@
     const exercices = [];
     for (let i = 0; i < nb; i++) {
       const g = generateurs[i % generateurs.length];
-      exercices.push(Object.assign({ generateur: g.id, univers: g.univers, essais: 0, etat: 'attente' }, g.genere(ctx)));
+      exercices.push(Object.assign({ generateur: g.id, univers: g.univers, essais: 0, etat: 'attente', src: i, carte: idCarte(notion, 'ex', g.id) }, g.genere(ctx)));
     }
     const defi = notion.defi.genere(ctx);
-    defi.questions.forEach((q) => { q.essais = 0; q.etat = 'attente'; });
+    defi.questions.forEach((q, k) => { q.essais = 0; q.etat = 'attente'; q.src = k; q.carte = idCarte(notion, 'defi', k); });
     return {
-      notion, etape, ctx,
+      notion, etape, ctx, graine,
+      anki: !!options.anki, // avec les quatre boutons d'Anki : une question n'est finie qu'une fois notée
+      notes: [],
       index: 0,
       manipulationFaite: !aLEcran(notion), // sans manipulation à l'écran, la réflexion guidée suffit
       exercices, iExercice: 0,
@@ -122,6 +125,8 @@
   }
 
   const nomDuTemps = (m) => TEMPS[m.index];
+  /** Identifiant de la carte d'une question (le même que Revision.idQuestion). */
+  const idCarte = (notion, sorte, cle) => notion.id + '|' + sorte + '|' + cle;
 
   /** Vrai si la notion a une manipulation à l'écran (champ manipulation.type) ; sinon, réflexion guidée (manipulation.etapes). */
   const aLEcran = (n) => !!(n.manipulation && n.manipulation.type);
@@ -167,8 +172,8 @@
   function peutContinuer(m) {
     switch (nomDuTemps(m)) {
       case 'manipulation': return m.manipulationFaite;
-      case 'entrainement': return m.exercices.every((e) => e.etat !== 'attente');
-      case 'defi': return m.defi.questions.every((q) => q.etat !== 'attente');
+      case 'entrainement': return m.exercices.every((e) => faite(m, e));
+      case 'defi': return m.defi.questions.every((q) => faite(m, q));
       case 'recompense': return false;
       default: return true;
     }
@@ -245,15 +250,78 @@
     return (nomDuTemps(m) === 'entrainement' ? m.iExercice : m.iQuestion) !== avant;
   }
 
+  const faite = (m, q) => q.etat !== 'attente' && (!m.anki || !!q.note);
+
+  /** La liste des questions du temps courant : exercices ou questions du défi. */
+  const listeCourante = (m) => (nomDuTemps(m) === 'entrainement' ? m.exercices : m.defi.questions);
+  const rangCourant = (m) => (nomDuTemps(m) === 'entrainement' ? m.iExercice : m.iQuestion);
+
+  /** Note la question courante, une fois finie : « revoir », « difficile », « bien » ou « facile ».
+      « À revoir » : la même question revient dans cette mission, après 3 autres questions (ou à la fin s'il en reste moins).
+      Rend la carte notée : { carte, note }. */
+  function noter(m, note, apres = 3) {
+    const q = questionCourante(m);
+    if (q.etat === 'attente') throw new Error('la question n’est pas finie');
+    q.note = note;
+    m.notes.push({ carte: q.carte, note });
+    if (note === 'revoir') {
+      const l = listeCourante(m);
+      const i = rangCourant(m);
+      const copie = Object.assign({}, q, { etat: 'attente', essais: 0, note: undefined, coches: undefined, retour: true });
+      l.splice(Math.min(l.length, i + 1 + apres), 0, copie);
+    }
+    return { carte: q.carte, note };
+  }
+
+  /** Après une note : la question suivante du temps, sinon le temps suivant. Rend 'question', 'temps' ou 'rien'. */
+  function avancer(m) {
+    if (questionSuivante(m)) return 'question';
+    if (peutContinuer(m)) { suivant(m); return 'temps'; }
+    return 'rien';
+  }
+
+  const etatQuestion = (q) => ({ src: q.src, etat: q.etat, essais: q.essais, note: q.note || null, retour: !!q.retour, coches: q.coches || null });
+
+  /** L'état exact d'une mission, pour la reprendre plus tard : temps, question, réponses déjà données. */
+  function sauver(m) {
+    return {
+      notion: m.notion.id, graine: m.graine, etape: m.etape, index: m.index, manipulationFaite: m.manipulationFaite,
+      iExercice: m.iExercice, iQuestion: m.iQuestion, points: m.points, serie: m.serie || 0, notes: m.notes.slice(),
+      exercices: m.exercices.map(etatQuestion), defi: m.defi.questions.map(etatQuestion), anki: m.anki,
+    };
+  }
+
+  /** Reprend une mission sauvée : les questions sont refaites à l'identique (même graine), puis leur état est remis. */
+  function reprendre(notion, s) {
+    const m = creer(notion, { graine: s.graine, etape: s.etape, anki: s.anki });
+    const refaire = (originaux, etats) => etats.map((x) => Object.assign({}, originaux[x.src], { etat: x.etat, essais: x.essais, note: x.note || undefined, retour: x.retour, coches: x.coches || undefined }));
+    m.exercices = refaire(m.exercices, s.exercices);
+    m.defi.questions = refaire(m.defi.questions, s.defi);
+    Object.assign(m, { index: s.index, manipulationFaite: s.manipulationFaite, iExercice: s.iExercice, iQuestion: s.iQuestion, points: s.points, serie: s.serie, notes: s.notes.slice() });
+    return m;
+  }
+
+  /** Les cartes de question d'une notion (générateurs de l'entraînement, questions du défi), pour l'avancement. */
+  function cartesDeNotion(notion) {
+    const ids = [...new Set(notion.exercices.map((g) => idCarte(notion, 'ex', g.id)))];
+    let n = 0;
+    try { n = notion.defi.genere({ alea: Hasard.creer(1), etape: 1, mot: (cle) => mot(notion, cle, 1), pgcd }).questions.length; } catch (e) { n = 0; }
+    for (let k = 0; k < n; k++) ids.push(idCarte(notion, 'defi', k));
+    return ids;
+  }
+
   /** Fin de mission : l'auto-évaluation (« facile », « hesite », « rate ») programme la révision.
       Revision est le module js/revision.js ; carteAvant est la carte existante de la notion, ou null. */
   function terminer(m, autoEvaluation, aujourdhui, Revision, carteAvant = null) {
     if (nomDuTemps(m) !== 'recompense') throw new Error('la mission n’est pas arrivée à la récompense');
     m.terminee = true;
+    // Avec Anki, la carte de la notion entière est programmée à partir des notes de ses questions.
+    const note = autoEvaluation || Revision.noteDeNotion(m.notes.map((x) => x.note));
     return {
       notion: m.notion.id,
       points: m.points,
-      carte: Revision.programmer(carteAvant, autoEvaluation, aujourdhui, m.notion.id),
+      notes: m.notes.slice(),
+      carte: Revision.programmer(carteAvant, note, aujourdhui, m.notion.id),
     };
   }
 
@@ -271,5 +339,6 @@
     mot, etapeVocabulaire, lireNombre, verifier, ecrireReponse, pgcd,
     creer, tempsCourant, contenu, peutContinuer, suivant, marquerManipulation,
     repondre, validerGrille, questionSuivante, terminer,
+    noter, avancer, sauver, reprendre, cartesDeNotion, idCarte,
   };
 });

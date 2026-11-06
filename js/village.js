@@ -112,6 +112,8 @@
         el('span', { classe: 'quartier-lieu', texte: q.lieu }),
         el('span', { classe: 'sr', texte: ', ' }),
         el('span', { classe: 'quartier-matiere', texte: q.matiere }),
+        el('span', { classe: 'sr', texte: ', avancement ' }),
+        el('span', { classe: 'quartier-avance' }),
       ]);
       b.style.setProperty('--couleur', q.couleur);
       b.style.setProperty('--couleur-texte', q.texte);
@@ -132,6 +134,7 @@
     // Chaque bouton est centré sur son quartier, puis rentré dans le plan s'il dépassait du bord.
     function caler() {
       const sens = plan.classList.contains('plan-horizontal') ? 'horizontal' : 'vertical';
+      plan.classList.remove('plan-liste');
       const W = plan.clientWidth, H = plan.clientHeight;
       liste.querySelectorAll('li').forEach((li, i) => {
         const { x, y } = QUARTIERS[i].zone[sens];
@@ -139,11 +142,15 @@
         li.style.left = Math.min(Math.max(W * x / 100, w / 2), W - w / 2) + 'px';
         li.style.top = Math.min(Math.max(H * y / 100, h / 2), H - h / 2) + 'px';
       });
+      // Deux quartiers qui se chevauchent : la liste, plus lisible et plus facile à toucher (consigne du 6 nov. 2026).
+      const r = [...liste.querySelectorAll('li')].map((li) => li.getBoundingClientRect());
+      const touche = r.some((a, i) => r.some((c, j) => j > i && Math.min(a.right, c.right) - Math.max(a.left, c.left) > 2 && Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top) > 2));
+      if (touche) plan.classList.add('plan-liste');
     }
 
     placer();
     paysage.addEventListener('change', placer);
-    if (typeof ResizeObserver === 'function') new ResizeObserver(caler).observe(plan);
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => requestAnimationFrame(caler)).observe(plan);
   }
 
   return { QUARTIERS, IMAGES, toutesLesImages, quartier, image, djeli, dessiner };

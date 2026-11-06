@@ -5,7 +5,7 @@
    Changer VERSION à chaque publication : l'ancienne coquille est remplacée ; seuls les sons dont le fichier a changé sont retirés. */
 'use strict';
 
-const VERSION = 'v77';
+const VERSION = 'v78';
 const COQUILLE = 'coquille-' + VERSION;
 
 const FICHIERS = [
@@ -19,6 +19,8 @@ const FICHIERS = [
   'js/hasard.js',
   'js/stockage.js',
   'js/revision.js',
+  'js/avancement.js',
+  'js/vue-anki.js',
   'js/prerequis.js',
   'js/mission.js',
   'js/outils-contenu.js',

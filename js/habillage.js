@@ -45,6 +45,7 @@
       croix: '<path d="M6 6l12 12M18 6L6 18"/>',
       retour: '<path d="M15 5l-7 7 7 7"/>',
       maison: '<path d="M3.5 11.5L12 4l8.5 7.5M6 10v9.5h4.5v-5h3v5H18V10"/>',
+      pause: '<path d="M9 5v14M15 5v14"/>',
     }[nom];
     const s = document.createElementNS(SVG, 'svg');
     s.setAttribute('viewBox', '0 0 24 24');
@@ -104,6 +105,33 @@
     });
   }
 
+  /** Plusieurs choix en grands boutons, l'un sous l'autre, focus sur le premier ; rend la valeur choisie, ou null. */
+  function choisir(titre, texte, choix, annuler) {
+    return new Promise((fin) => {
+      const h = el('h2', { id: 'choix-titre', texte: titre });
+      const p = el('p', { id: 'choix-texte', texte });
+      let reponse = null;
+      const boutons = choix.map((c) => {
+        const b = el('button', { type: 'button', classe: 'choix-grand', texte: c.texte });
+        b.addEventListener('click', () => { reponse = c.valeur; d.close(); });
+        return b;
+      });
+      const non = el('button', { type: 'button', classe: 'secondaire choix-grand', texte: annuler || 'Annuler' });
+      non.addEventListener('click', () => d.close());
+      const d = el('dialog', { classe: 'confirmation choix', 'aria-labelledby': 'choix-titre', 'aria-describedby': 'choix-texte' }, [h, p, el('div', { classe: 'boutons colonne' }, boutons.concat(non))]);
+      d.addEventListener('close', () => { d.remove(); fin(reponse); });
+      document.body.append(d);
+      d.showModal();
+      boutons[0].focus();
+    });
+  }
+
+  /** Une barre d'avancement fine, avec son texte (« 60 % », lu « 60 pour cent ») ; la barre est pour les yeux. */
+  function avancement(pourcent, texte) {
+    const barre = el('span', { classe: 'avance-barre', 'aria-hidden': 'true' }, [el('span', { classe: 'avance-plein', style: 'width:' + Math.max(0, Math.min(100, pourcent)) + '%' })]);
+    return el('span', { classe: 'avance' }, [el('span', { classe: 'avance-texte', texte: texte || (pourcent + '\u202F%') }), barre]);
+  }
+
   // ---------- Chemin ----------
   const SERPENT = [18, 40, 64, 82, 64, 40];
 
@@ -136,6 +164,8 @@
     const x = SERPENT[o.rang % SERPENT.length];
     const li = el('li', { classe: 'etape ' + o.etat + (x > 50 ? ' droite' : '') + (o.aReviser ? ' a-reviser' : ''), style: '--x:' + x });
     const nom = el('span', { classe: 'etape-nom' }, [el('span', { classe: 'sr', texte: o.numero + '. ' }), o.titre]);
+    // L'avancement de la notion, sous son nom (consigne du 6 nov. 2026).
+    if (typeof o.pourcent === 'number') nom.append(el('span', { classe: 'sr', texte: ' : ' }), avancement(o.pourcent));
     if (o.action) {
       const b = el('button', { type: 'button', classe: 'pierre-bouton', 'data-notion': o.id }, [pierre(o.etat, o.numero, o.matiere), el('span', { classe: 'etape-texte' }, [nom, o.note ? el('span', { classe: 'note', texte: o.note }) : null])]);
       b.addEventListener('click', o.action);
@@ -264,5 +294,5 @@
     return scene;
   }
 
-  racine.Habillage = { el, matiere, entrerMatiere, perle, icone, portrait, bulle, pastilles, confirmer, etapeChemin, tracerChemin, sceneRecompense, FORMES, SERPENT };
+  racine.Habillage = { el, matiere, entrerMatiere, perle, icone, portrait, bulle, pastilles, confirmer, choisir, avancement, etapeChemin, tracerChemin, sceneRecompense, FORMES, SERPENT };
 })(typeof window !== 'undefined' ? window : globalThis);

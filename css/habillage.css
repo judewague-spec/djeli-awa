@@ -241,3 +241,57 @@ dialog.confirmation p { margin: 0 0 1rem; }
   .confettis { display: none; }
   .etape.ouverte .pierre { box-shadow: 0 0 0 4px var(--couleur-pale), 0 0 0 6px var(--couleur); }
 }
+
+/* ---------- Téléphone d'abord (consigne du 6 nov. 2026) ---------- */
+/* La barre du haut reste fixée en haut, sur une ligne, même en 360 px : icône et mot court ; le nom complet est lu par JAWS. */
+header.barre { position: sticky; top: 0; z-index: 30; background: var(--fond, #FFF7EE); justify-content: center; gap: 0.25rem; padding-bottom: 0.25rem; flex-wrap: nowrap; }
+header.barre button.discret { min-height: 48px; min-width: 48px; padding: 0.3rem 0.5rem; white-space: nowrap; }
+@media (max-width: 21rem) { header.barre button.discret { font-size: 0.9rem; padding: 0.3rem 0.35rem; gap: 0.25rem; } }
+/* Le titre qui reçoit le focus n'est jamais caché sous la barre fixée. */
+:target, h2[tabindex], h3[tabindex] { scroll-margin-top: 4.5rem; }
+html { scroll-padding-top: 4.5rem; }
+button.reecouter { min-height: 48px; }
+body { overflow-x: hidden; }
+main, .temps-corps, .question-serie, .retour, .suite-question { min-width: 0; overflow-wrap: anywhere; }
+
+/* Les quatre boutons d'Anki : en une rangée si la place le permet, sinon deux rangées de deux ; jamais coupés. */
+.anki { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; margin: 0.75rem 0; }
+@media (max-width: 30rem) { .anki { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.anki button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; min-height: 64px; padding: 0.4rem 0.3rem; line-height: 1.15; text-align: center; white-space: normal; }
+.anki-nom { font-weight: 700; font-size: 1.05rem; }
+.anki-delai { font-weight: 500; font-size: 0.85rem; }
+.anki button.anki-revoir { background: #FDE7E1; color: #7A1E0A; border-color: #B23A1E; }
+.anki button.anki-difficile { background: #FFF1D6; color: #6B4300; border-color: #A86A00; }
+.anki button.anki-bien { background: var(--couleur, #2E7D32); color: var(--couleur-texte, #fff); }
+.anki button.anki-facile { background: #E1F0FB; color: #0B4A75; border-color: #1E6EA8; }
+button.compris { display: block; width: 100%; margin: 0.75rem 0; font-size: 1.05rem; }
+.suite-temps { margin-top: 1rem; }
+.suite-question { margin-top: 0.5rem; }
+
+/* La suite d'une mission : ce qui vient, puis les trois choix, l'un sous l'autre. */
+.suite-info { font-weight: 600; margin: 1rem 0 0.5rem; }
+.suite-choix, .boutons.colonne { display: flex; flex-direction: column; align-items: stretch; gap: 0.6rem; }
+.suite-choix button, .boutons.colonne button { width: 100%; }
+dialog.choix { width: min(24rem, calc(100vw - 2rem)); }
+button.choix-grand { min-height: 56px; font-size: 1.05rem; text-align: left; }
+
+/* L'avancement : un pourcentage et une barre fine. */
+.avance { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.15rem; font-weight: 500; font-size: 0.95rem; }
+.avance-barre { flex: 1 1 4rem; max-width: 8rem; height: 6px; border-radius: 3px; background: rgba(0, 0, 0, 0.12); overflow: hidden; }
+.avance-plein { display: block; height: 100%; background: var(--couleur, #2E7D32); }
+.etape-nom .avance { font-size: 0.9rem; }
+.avance-matiere { margin: 0.5rem 0 1rem; }
+.avance-matiere .avance { font-size: 1rem; flex-wrap: wrap; }
+.avance-matiere .avance-barre { max-width: none; flex-basis: 100%; height: 8px; }
+.quartier-avance { display: block; font-size: 0.85rem; font-weight: 600; }
+.quartier-avance:empty { display: none; }
+
+/* Reprendre là où tu t'es arrêtée, à l'accueil. */
+button.reprendre { display: flex; flex-direction: column; align-items: flex-start; width: 100%; margin: 0.5rem 0 1rem; text-align: left; }
+.reprendre-quoi { font-weight: 500; font-size: 0.95rem; }
+.pastilles { flex-wrap: wrap; }
+header.barre.barre-icones .mot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* Le village en liste, quand les quartiers ne tiennent plus sur le plan. */
+.plan.plan-liste .quartiers li { position: static; transform: none; width: auto; max-width: none; margin: 0 0 0.6rem; }
+.plan.plan-liste .plan-fond { display: none; }
+.plan.plan-liste { padding: 0; }

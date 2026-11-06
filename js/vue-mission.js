@@ -55,21 +55,32 @@
     return el('ol', { classe: 'correction' }, etapes.map((t) => el('li', { texte: t })));
   }
 
-  /** Lance une mission dans conteneur. options : notion, etape, graine, aujourdhui, carteAvant, dire, surFin. */
+  /** Lance une mission dans conteneur.
+      options : notion, etape, graine, reprise (état sauvé), aujourdhui, carteAvant, cartesQ (cartes de question, pour les délais),
+      dire, perles, points, noterCarte(carte, note), sauver(etat), enregistrer(fin), suite(fin, voixFinie) → éléments à montrer.
+      Question par question, à la façon d'Anki (consigne du 6 nov. 2026) : réponse juste, quatre boutons ; réponse fausse,
+      « J'ai compris, question suivante » ; le choix fait venir la suite, et le focus va sur son titre. */
   function lancer(conteneur, options) {
-    const m = M.creer(options.notion, { graine: options.graine, etape: options.etape });
+    const m = options.reprise ? M.reprendre(options.notion, options.reprise) : M.creer(options.notion, { graine: options.graine, etape: options.etape, anki: true });
     const dire = options.dire;
     const tirage = options.tirage || window.Reserves.seance(); // réserves de phrases (SPEC.md, section 10)
+    const cartesQ = options.cartesQ || {};
+    const sauver = () => { if (options.sauver && M.tempsCourant(m).nom !== 'recompense') options.sauver(M.sauver(m)); };
 
-    let termine = false; // la mission est finie : plus rien à perdre en la quittant
-
-    /** « Quitter la mission ? » : rend une promesse oui / non ; une mission finie se quitte sans question. */
-    function demanderQuitter() {
-      if (termine) { window.Voix.arreter(); return Promise.resolve(true); }
-      return window.Habillage.confirmer('Quitter la mission ?', 'Tu reprendras cette mission au début.', 'Quitter', 'Continuer la mission').then((oui) => { if (oui) window.Voix.arreter(); return oui; });
+    /** Après une note : la question suivante, ou le temps suivant ; le focus va sur le nouveau titre. */
+    function apresNote(note) {
+      const r = M.avancer(m);
+      afficher(r === 'question' ? 'h3' : 'h2');
     }
 
-    function afficher() {
+    function noter(carte, note) {
+      M.noter(m, note, window.Revision.REVOIR_APRES);
+      if (options.noterCarte) options.noterCarte(carte, note);
+      cartesQ[carte] = window.Revision.programmerQuestion(cartesQ[carte] || null, note, options.aujourdhui, carte);
+    }
+
+    function afficher(focus) {
+      sauver();
       const t = M.tempsCourant(m);
       const c = M.contenu(m);
       conteneur.innerHTML = '';
@@ -79,19 +90,19 @@
       const nomTemps = el('p', { classe: 'temps', texte: options.notion.titre });
       nomTemps.append(el('span', { classe: 'sr', texte: ' · temps ' + t.numero + ' sur ' + t.total }));
       conteneur.appendChild(nomTemps);
-      const barre = options.barre || conteneur;
-      const quitter = bouton('Quitter', () => { demanderQuitter().then((oui) => { if (oui) options.surFin(null); }); }, 'discret');
-      quitter.setAttribute('aria-label', 'Quitter la mission');
-      quitter.prepend(window.Habillage.icone('croix'));
-      barre.replaceChildren(quitter);
       conteneur.appendChild(titre);
       const corps = el('div', { classe: 'temps-corps' });
       conteneur.appendChild(corps);
-      const pied = el('div', { classe: 'boutons pied' });
-      conteneur.appendChild(pied);
-      const continuer = bouton('Continuer', () => { if (M.peutContinuer(m)) { M.suivant(m); afficher(); } });
-      const majContinuer = () => { continuer.hidden = !M.peutContinuer(m); };
+      // « Continuer », juste sous le contenu ; il reçoit le focus quand il apparaît en cours de temps (manipulation finie).
+      const continuer = bouton('Continuer', () => { if (M.peutContinuer(m)) { M.suivant(m); afficher('h2'); } });
+      const suiteTemps = el('div', { classe: 'boutons suite-temps' }, [continuer]);
+      const majContinuer = (focus) => {
+        const avant = continuer.hidden;
+        continuer.hidden = !M.peutContinuer(m);
+        if (focus && avant && !continuer.hidden) continuer.focus();
+      };
 
+      const avecQuestion = t.nom === 'entrainement' || t.nom === 'defi';
       ({
         accroche() {
           const d = window.Decors && window.Decors.pour(options.notion.id);
@@ -112,7 +123,7 @@
             if (c.etapes) corps.append(el('ol', { classe: 'reflexion' }, c.etapes.map((e) => el('li', { texte: e }))));
             const zone = el('div', { classe: 'manipulation' });
             corps.append(zone);
-            window.Manipulations.obtenir(c.type).monter(zone, c, dire, () => { M.marquerManipulation(m); majContinuer(); });
+            window.Manipulations.obtenir(c.type).monter(zone, c, dire, () => { M.marquerManipulation(m); sauver(); majContinuer(true); });
           } else {
             // Réflexion guidée : une phrase dite, le dessin, puis les étapes à suivre de tête et sur le cahier (affichées).
             if (c.intro) corps.append(parole(c.intro));
@@ -123,33 +134,28 @@
         },
         decouverte() { corps.append(parole(c.texte, c.parle)); const i = image(c.image); if (i) corps.append(i); },
         vocabulaire() { corps.append(parole(c.texte)); },
-        entrainement() { question(corps, c.exercice, 'Exercice ' + c.numero + ' sur ' + c.total, c.numero < c.total, majContinuer); },
+        entrainement() { question(corps, c.exercice, 'Exercice ' + c.numero + ' sur ' + c.total); },
         defi() {
           corps.append(el('p', { classe: 'enonce-defi', texte: c.enonce }));
           const i = image(c.image); if (i) corps.append(i);
-          question(corps, c.question, 'Question ' + c.numero + ' sur ' + c.total, c.numero < c.total, majContinuer);
+          question(corps, c.question, 'Question ' + c.numero + ' sur ' + c.total);
         },
         recompense() { recompense(corps, c); },
       })[t.nom]();
 
-      pied.append(continuer);
-      majContinuer();
-      titre.focus();
-    }
-
-    function questionSuivante() {
-      M.questionSuivante(m);
-      afficher();
-      conteneur.querySelector('h3').focus();
+      if (!avecQuestion && t.nom !== 'recompense') { corps.append(suiteTemps); majContinuer(false); }
+      const cible = focus === 'h3' ? conteneur.querySelector('h3') : null;
+      (cible || titre).focus();
     }
 
     /** Un exercice ou une question du défi : saisie, choix, ou réponse rédigée avec grille. */
-    function question(corps, q, entete, encoreUne, majContinuer) {
-      corps.append(el('h3', { tabindex: '-1', texte: entete }));
+    function question(corps, q, entete) {
+      const reprise = q.retour ? ' · elle revient' : '';
+      corps.append(el('h3', { tabindex: '-1', texte: entete + reprise }));
       corps.append(el('p', { classe: 'enonce', texte: q.enonce || q.texte }));
       const dessinQ = image(q.image); if (dessinQ) corps.append(dessinQ); // un exercice peut avoir son dessin (tableau périodique…)
       const retour = el('div', { classe: 'retour', 'aria-live': 'polite' });
-      const suite = el('div', { classe: 'boutons' });
+      const suite = el('div', { classe: 'suite-question' });
 
       // Aucune action pendant 45 secondes : une phrase de la réserve F, une fois, puis plus rien avant le prochain geste.
       const relance = el('div', { classe: 'relance', 'aria-live': 'polite' });
@@ -168,23 +174,47 @@
       guetter();
 
       /** Première erreur : une phrase de la réserve D, puis l'aide de l'exercice. */
-      function premiereErreur(r) {
+      function premiereErreur(r, sansParler) {
         const phrase = tirage.tirer('D');
         retour.innerHTML = '';
         const bloc = retourParle('faux', '✗ ' + phrase, [phrase, r.aideParlee]);
         bloc.insertBefore(el('p', { classe: 'indice', texte: 'Indice : ' + r.aide }), bloc.lastChild);
         retour.append(bloc);
-        dire(phrase + ' Indice : ' + r.aide, [phrase, r.aideParlee]);
+        if (!sansParler) dire(phrase + ' Indice : ' + r.aide, [phrase, r.aideParlee]);
       }
 
-      function finir(r) {
+      /** La question est finie : juste, les quatre boutons ; fausse, « À revoir » et « J'ai compris ». */
+      function conclure(juste, phrase, correction) {
         fini = true; clearTimeout(minuteur); relance.innerHTML = '';
+        sauver();
+        if (juste) {
+          const b = window.VueAnki.boutons(window.Revision.delaisQuestion(cartesQ[q.carte] || null, options.aujourdhui), (note) => { noter(q.carte, note); apresNote(note); });
+          suite.replaceChildren(b);
+          if (correction) suite.append(correction);
+          b.montrer();
+        } else {
+          if (!q.note) noter(q.carte, 'revoir');
+          sauver();
+          const b = window.VueAnki.compris(() => apresNote('revoir'));
+          if (correction) suite.append(correction);
+          suite.append(b);
+          b.montrer();
+        }
+        if (phrase) dire(phrase);
+      }
+
+      function finir(r, sansParler) {
         retour.innerHTML = '';
         const phrase = tirage.tirer(r.situation);
-        retour.append(retourParle(r.juste ? 'juste' : 'faux', (r.juste ? '✓ ' : '✗ ') + phrase, phrase), listeCorrection(r.correction));
-        dire(phrase);
-        if (encoreUne) suite.append(bouton('Question suivante', questionSuivante));
-        majContinuer();
+        retour.append(retourParle(r.juste ? 'juste' : 'faux', (r.juste ? '✓ ' : '✗ ') + phrase, phrase));
+        conclure(r.juste, sansParler ? null : phrase, listeCorrection(r.correction || q.correction || []));
+      }
+
+      // Une question déjà répondue (mission reprise) : son verdict, puis le choix qui manquait.
+      if (q.etat !== 'attente') {
+        corps.append(relance, retour, suite);
+        finir({ juste: q.etat === 'juste', situation: q.etat === 'juste' ? 'A' : 'E', correction: q.correction }, true);
+        return;
       }
 
       if (q.grille) {
@@ -200,12 +230,9 @@
             const r = M.validerGrille(m, cases.map((d) => d.querySelector('input').checked));
             valider.remove();
             grille.querySelectorAll('input').forEach((i) => { i.disabled = true; });
-            fini = true; clearTimeout(minuteur); relance.innerHTML = '';
             const phrase = tirage.tirer(r.situation);
             retour.append(el('p', { classe: 'compte', texte: M.PHRASES.grille(r.reussis, r.total) }), retourParle('', phrase, phrase));
-            dire(phrase);
-            if (encoreUne) suite.append(bouton('Question suivante', questionSuivante));
-            majContinuer();
+            conclure(r.reussis === r.total, phrase, null);
           });
           corps.insertBefore(listeCorrection(q.correction), retour);
           corps.insertBefore(grille, retour);
@@ -216,12 +243,14 @@
         return;
       }
 
+      const apresReponse = (r, desactiver) => {
+        sauver();
+        if (r.fini) { desactiver(); finir(r); } else premiereErreur(r);
+      };
       if (q.reponse.type === 'choix') {
         const choix = el('div', { classe: 'boutons choix', role: 'group', 'aria-label': 'Réponses possibles' });
         q.reponse.options.forEach((o, i) => choix.append(bouton(o, () => {
-          const r = M.repondre(m, i);
-          if (r.fini) { choix.querySelectorAll('button').forEach((b) => { b.disabled = true; }); finir(r); }
-          else premiereErreur(r);
+          apresReponse(M.repondre(m, i), () => choix.querySelectorAll('button').forEach((b) => { b.disabled = true; }));
         })));
         corps.append(choix);
       } else {
@@ -236,51 +265,39 @@
         formulaire.addEventListener('submit', (e) => {
           e.preventDefault();
           if (!champ.value.trim()) { dire(M.PHRASES.ecrisDabord); return; }
-          const r = M.repondre(m, champ.value);
-          if (r.fini) { champ.disabled = true; formulaire.querySelector('button').disabled = true; finir(r); }
-          else { premiereErreur(r); champ.select(); }
+          apresReponse(M.repondre(m, champ.value), () => { champ.disabled = true; formulaire.querySelector('button').disabled = true; });
+          if (!champ.disabled) champ.select();
         });
         corps.append(formulaire);
       }
       const aide = bouton('Aide', () => { retour.innerHTML = ''; retour.append(parole(q.aide, q.aideParlee)); }, 'secondaire');
       corps.append(el('div', { classe: 'boutons' }, [aide]), relance, retour, suite);
+      // Reprise après une première erreur : l'indice est remontré.
+      if (q.essais === 1) premiereErreur({ aide: q.aide, aideParlee: q.aideParlee || q.aide }, true);
     }
 
     function recompense(corps, c) {
+      // La fin de mission est enregistrée dès la récompense : la carte de la notion vient des notes de ses questions.
+      const fin = M.terminer(m, null, options.aujourdhui, window.Revision, options.carteAvant);
+      const enregistre = Promise.resolve(options.enregistrer ? options.enregistrer(fin) : null);
       // Le fait culturel « Le savais-tu ? » (SPEC.md, principe 9) suit la récompense, lu juste après elle.
       const fait = options.notion.savaisTu;
       if (options.perles) corps.append(window.Habillage.sceneRecompense({ perles: options.perles, points: options.points || 0, gain: c.points }));
-      corps.append(parole(c.texte, null, !!fait));
-      if (fait) { corps.append(el('div', { classe: 'savais-tu' }, [parole(fait, null, true)])); window.Voix.lire([c.texte, fait]); }
+      corps.append(parole(c.texte, null, true));
+      if (fait) corps.append(el('div', { classe: 'savais-tu' }, [parole(fait, null, true)]));
       corps.append(el('p', { classe: 'gain', texte: 'Tu gagnes ' + c.points + ' cauris, et une perle de plus pour ton collier.' }));
-      const question = el('fieldset', { classe: 'auto-evaluation' }, [el('legend', { texte: 'Pour toi, cette mission était :' })]);
-      const zone = el('div', { classe: 'boutons' });
-      question.append(zone);
-      const libelles = { facile: 'Facile', hesite: 'J’ai hésité', rate: 'Raté' };
-      for (const rep of window.Revision.REPONSES) {
-        zone.append(bouton(libelles[rep], () => {
-          const fin = M.terminer(m, rep, options.aujourdhui, window.Revision, options.carteAvant);
-          termine = true;
-          zone.querySelectorAll('button').forEach((b) => { b.disabled = true; });
-          // Fin de mission : une phrase de la réserve G, puis parfois un dicton (réserve I) ; la date est seulement écrite.
-          const phrase = tirage.tirer('G');
-          const dicton = tirage.dicton();
-          const dites = [phrase].concat(dicton || []);
-          const bloc = retourParle('', phrase, dites);
-          if (dicton) bloc.insertBefore(el('p', { classe: 'dicton', texte: dicton }), bloc.lastChild);
-          const suite = el('div', { classe: 'boutons suite' }, [bouton('Retour au quartier', () => options.surFin(fin))]);
-          corps.append(bloc, el('p', { classe: 'note', texte: M.PHRASES.note(jourEnLettres(fin.carte.echeance)) }), suite);
-          // La suite proposée (consigne du 6 nov. 2026) : mission suivante, changer de matière, arrêter pour aujourd'hui.
-          Promise.resolve(options.enregistrer(fin)).then(() => (options.suite ? options.suite(fin) : null)).then((l) => { if (l && l.length) suite.replaceChildren(...l); }).catch(() => {});
-          dire(dites.join(' '), dites);
-        }));
-      }
-      corps.append(question);
+      // Fin de mission : une phrase de la réserve G, puis parfois un dicton (réserve I) ; la date est seulement écrite.
+      const phrase = tirage.tirer('G');
+      const dicton = tirage.dicton();
+      const bloc = retourParle('', phrase, [phrase].concat(dicton || []));
+      if (dicton) bloc.insertBefore(el('p', { classe: 'dicton', texte: dicton }), bloc.lastChild);
+      const suite = el('div', { classe: 'suite-mission' });
+      corps.append(bloc, el('p', { classe: 'note', texte: M.PHRASES.note(jourEnLettres(fin.carte.echeance)) }), suite);
+      const voix = window.Voix.lire([c.texte].concat(fait ? [fait] : [], [phrase], dicton ? [dicton] : []));
+      enregistre.then(() => (options.suite ? options.suite(fin, voix) : null)).then((l) => { if (l && l.length) suite.replaceChildren(...l); }).catch(() => {});
     }
 
     afficher();
-    // Pour le Retour du téléphone : la même question que le bouton Quitter (consigne du 6 nov. 2026).
-    Object.defineProperty(m, 'demanderQuitter', { value: demanderQuitter, enumerable: false });
     return m;
   }
 

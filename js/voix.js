@@ -102,8 +102,11 @@
     urlEnCours = null;
   }
 
+  // Les lectures en attente de leur fin : arrêter les termine toutes (la suite ne reste jamais suspendue).
+  const enAttente = new Set();
   function arreter() {
     jeton++;
+    for (const f of [...enAttente]) f();
     if (lecteur && !lecteur.paused) lecteur.pause();
   }
 
@@ -112,15 +115,19 @@
   const racineJournal = {};
 
   /** Lit une phrase de Djéli Awa, ou plusieurs phrases complètes l'une après l'autre (liste).
-      force : lire même si la voix est coupée (bouton « Réécouter »). */
+      force : lire même si la voix est coupée (bouton « Réécouter »).
+      Rend une promesse tenue quand la voix a fini (ou a été arrêtée, ou n'a rien à dire). */
   function lire(texte, force) {
     if (!sons) initialiser();
     const textes = [].concat(texte || []).filter(Boolean);
-    if (!textes.length || (!actif && !force)) return;
+    if (!textes.length || (!actif && !force)) return Promise.resolve();
     arreter();
     const mien = jeton;
+    let tenir;
+    const promesse = new Promise((ok) => { tenir = () => { enAttente.delete(tenir); ok(); }; });
+    enAttente.add(tenir);
     const suivante = async (i) => {
-      if (i >= textes.length || mien !== jeton) return;
+      if (i >= textes.length || mien !== jeton) { tenir(); return; }
       const src = sonDe(sons, textes[i]);
       if (!src) { suivante(i + 1); return; } // pas de son : le sous-titre seul
       const url = await sourceDe(src);
@@ -154,6 +161,7 @@
       audio.play().catch((e) => { if (e && e.name === 'NotAllowedError') fin(false); });
     };
     suivante(0);
+    return promesse;
   }
 
   function estActive() {

@@ -94,7 +94,6 @@
         repondre(champ.value, () => { champ.disabled = true; form.querySelector('button').disabled = true; });
       });
       corps.append(form, retour);
-      setTimeout(() => champ.focus(), 0);
     }
   }
 
@@ -129,11 +128,23 @@
     function etal() {
       const e = S.etalSuivant(tour, graphe, etat);
       if (!e) { fin(); return; }
-      const qs = S.questionsDeLetal(e, notions[e.notion], Date.now());
-      const justes = [];
+      const enCours = etat.etalEnCours && etat.etalEnCours.notion === e.notion ? etat.etalEnCours : null;
+      const graine = enCours ? enCours.graine : Date.now();
+      const qs = S.questionsDeLetal(e, notions[e.notion], graine);
+      const justes = enCours ? enCours.justes.slice() : [];
+      etat.etalEnCours = { notion: e.notion, graine, justes: justes.slice() };
+      options.enregistrer(etat);
       const c = cadre(conteneur, tour.titre, e.titre);
-      c.corps.append(parole(e.phrase));
-      let i = 0;
+      if (!justes.length) c.corps.append(parole(e.phrase));
+      let i = justes.length;
+      const finEtal = () => {
+        S.noterEtal(tour, graphe, etat, e.notion, justes);
+        etat.etalEnCours = null;
+        options.enregistrer(etat);
+        c.pied.prepend(bouton(etat.fini ? 'Finir le tour' : pas.replace(/^./, (x) => x.toUpperCase()) + ' suivant', etat.fini ? fin : etal));
+        c.pied.firstChild.focus();
+      };
+      if (i >= qs.length) { c.pied.append(bouton('Faire une pause', options.quitter, 'secondaire')); finEtal(); c.h.focus(); return; }
       const suivante = () => {
         const q = qs[i];
         const bloc = el('section', { classe: 'question-test' });
@@ -143,14 +154,11 @@
         // Au test : une seule réponse, et le même retour neutre, juste ou non (jamais de verdict d'échec).
         question(bloc, q, 1, () => ({ affiche: P['test-note'], dit: P['test-note'] }), (r) => {
           justes.push(!!r.premierCoup);
+          etat.etalEnCours = { notion: e.notion, graine, justes: justes.slice() };
+          options.enregistrer(etat);
           i++;
           if (i < qs.length) suivante();
-          else {
-            S.noterEtal(tour, graphe, etat, e.notion, justes);
-            options.enregistrer(etat);
-            c.pied.prepend(bouton(etat.fini ? 'Finir le tour' : pas.replace(/^./, (x) => x.toUpperCase()) + ' suivant', etat.fini ? fin : etal));
-            c.pied.firstChild.focus();
-          }
+          else finEtal();
         }, tirage);
         bloc.querySelector('h3').focus();
       };
@@ -176,61 +184,95 @@
     accueil();
   }
 
-  // ---------- Automatismes du matin, papier du soir ----------
+  // ---------- Automatismes du matin, papier du soir, révision : question par question, à la façon d'Anki ----------
 
-  /** options : mode ('matin' ou 'soir'), items, quitter(). Matin : un essai, la réponse est montrée. Soir : deux essais, l'aide, puis la correction. */
+  /** options : mode ('matin', 'soir' ou 'revision'), serie (état : { mode, entrees, i }), notions (id → notion), aujourdhui,
+      cartesQ (cartes de question), noterCarte(carte, note), sauver(serie), quitter(), fin(voix) → éléments de la suite.
+      Matin : un essai, la réponse est montrée. Soir et révision : deux essais, l'aide, puis la correction.
+      Réponse juste : les quatre boutons d'Anki ; fausse : « À revoir », la question revient après 3 autres (consigne du 6 nov. 2026). */
   function lancerSerie(conteneur, options) {
     const P = S.PHRASES_DITES;
-    const matin = options.mode === 'matin';
-    const titre = matin ? 'Automatismes du matin' : 'Papier du soir';
+    const mode = options.mode;
+    const matin = mode === 'matin';
+    const titre = matin ? 'Automatismes du matin' : mode === 'soir' ? 'Papier du soir' : 'Révisions';
     const tirage = window.Reserves.seance();
-    if (!options.items.length) {
+    const serie = options.serie;
+    const cartesQ = options.cartesQ || {};
+    const sauver = () => { if (options.sauver) options.sauver(serie); };
+    if (!serie.entrees.length) {
       const c = cadre(conteneur, titre, 'Pas encore');
       c.corps.append(parole(P['rien-encore']));
       c.pied.append(bouton('Retour', options.quitter));
       c.h.focus();
       return;
     }
-    let n = 0;
+    function fin() {
+      const c = cadre(conteneur, titre, 'C’est fini');
+      const p = matin ? P['matin-fin'] : mode === 'soir' ? P['soir-fin'] : tirage.tirer('G');
+      c.corps.append(window.Habillage.bulle(p, window.Voix.boutonReecouter(p)));
+      const voix = window.Voix.lire(p);
+      const suite = el('div', { classe: 'suite-mission' });
+      c.corps.append(suite);
+      Promise.resolve(options.fin ? options.fin(voix) : null).then((l) => { if (l && l.length) suite.replaceChildren(...l); else suite.replaceChildren(bouton('Retour au quartier', options.quitter)); }).catch(() => {});
+      c.h.focus();
+    }
     function item() {
-      if (n >= options.items.length) {
-        const c = cadre(conteneur, titre, 'C’est fini');
-        c.corps.append(parole(matin ? P['matin-fin'] : P['soir-fin']));
-        c.pied.append(bouton('Retour au quartier', options.quitter));
-        c.h.focus();
-        return;
-      }
-      const it = options.items[n];
+      sauver();
+      if (serie.i >= serie.entrees.length) { fin(); return; }
+      const e = serie.entrees[serie.i];
+      const x = S.questionDe(e, options.notions);
+      if (!x) { S.avancerSerie(serie); item(); return; } // une question qui n'existe plus : on passe
+      const q = x.question;
       // Le matin : « Calcul » seulement si la réponse est un nombre à trouver ; sinon, « Question ».
-      const estCalcul = options.items[n].reponse && options.items[n].reponse.type !== 'choix';
-      const c = cadre(conteneur, titre, (matin ? (estCalcul ? 'Calcul ' : 'Question ') : 'Exercice ') + (n + 1) + ' sur ' + options.items.length);
-      if (n === 0) c.corps.append(parole(matin ? P['matin-intro'] : P['soir-intro']));
-      c.corps.append(el('p', { classe: 'notion-source', texte: it.titre }));
-      const questions = matin ? [Object.assign({ texte: it.enonce }, it)] : it.questions;
-      if (!matin && it.enonce) c.corps.append(el('p', { classe: 'enonce-defi', texte: it.enonce }));
-      const i0 = image(it.image); if (i0) c.corps.append(i0);
-      let k = 0;
-      const suivante = () => {
-        const q = questions[k];
-        const bloc = el('section', { classe: 'question-serie' });
-        if (questions.length > 1) bloc.append(el('h3', { tabindex: '-1', texte: 'Question ' + (k + 1) + ' sur ' + questions.length }));
-        bloc.append(el('p', { classe: 'enonce', texte: q.texte || q.enonce }));
-        const dessinQ = image(q.image); if (dessinQ) bloc.append(dessinQ);
-        if (!matin && q.reponse && q.reponse.type !== 'choix') bloc.append(el('p', { classe: 'papier', texte: '✎ Écris ton calcul sur ton cahier, puis ta réponse ici.' }));
-        c.corps.append(bloc);
+      const estCalcul = q.reponse && q.reponse.type !== 'choix';
+      const nom = (matin ? (estCalcul ? 'Calcul ' : 'Question ') : mode === 'soir' ? 'Exercice ' : 'Question ') + (serie.i + 1) + ' sur ' + serie.entrees.length + (e.retour ? ' · elle revient' : '');
+      const c = cadre(conteneur, titre, nom);
+      if (serie.i === 0 && e.etat === 'attente' && mode !== 'revision') c.corps.append(parole(matin ? P['matin-intro'] : P['soir-intro']));
+      c.corps.append(el('p', { classe: 'notion-source', texte: x.titre }));
+      if (x.enonce) c.corps.append(el('p', { classe: 'enonce-defi', texte: x.enonce }));
+      const i0 = image(x.image); if (i0) c.corps.append(i0);
+      const bloc = el('section', { classe: 'question-serie' });
+      bloc.append(el('p', { classe: 'enonce', texte: q.texte || q.enonce }));
+      const dessinQ = image(q.image); if (dessinQ) bloc.append(dessinQ);
+      if (!matin && q.reponse && q.reponse.type !== 'choix') bloc.append(el('p', { classe: 'papier', texte: '✎ Écris ton calcul sur ton cahier, puis ta réponse ici.' }));
+      c.corps.append(bloc);
+      const suite = el('div', { classe: 'suite-question' });
+      const conclure = (juste) => {
+        e.etat = juste ? 'juste' : 'corrige';
+        if (!juste && !e.note) { S.noterSerie(serie, 'revoir', window.Revision.REVOIR_APRES); noterCarte(e.carte, 'revoir'); }
+        sauver();
+        const passer = () => { S.avancerSerie(serie); item(); };
+        if (juste) {
+          const b = window.VueAnki.boutons(window.Revision.delaisQuestion(cartesQ[e.carte] || null, options.aujourdhui), (note) => {
+            S.noterSerie(serie, note, window.Revision.REVOIR_APRES); noterCarte(e.carte, note); passer();
+          });
+          suite.replaceChildren(b);
+          bloc.append(suite);
+          b.montrer();
+        } else {
+          const b = window.VueAnki.compris(passer);
+          suite.replaceChildren(b);
+          bloc.append(suite);
+          b.montrer();
+        }
+      };
+      const noterCarte = (carte, note) => {
+        if (options.noterCarte) options.noterCarte(carte, note);
+        cartesQ[carte] = window.Revision.programmerQuestion(cartesQ[carte] || null, note, options.aujourdhui, carte);
+      };
+      if (e.etat !== 'attente') {
+        // Séance reprise : la question était déjà répondue ; il manquait le choix.
+        bloc.append(el('ol', { classe: 'correction' }, (q.correction || [M.ecrireReponse(q.reponse)]).map((t) => el('li', { texte: t }))));
+        conclure(e.etat === 'juste');
+      } else {
         question(bloc, q, matin ? 1 : 2, (r) => {
+          e.essais = q.essais; sauver();
           if (r.juste) { const p = tirage.tirer(r.premierCoup ? 'A' : 'C'); return { affiche: '✓ ' + p, dit: p, correction: matin ? null : q.correction }; }
           if (!r.fini) { const p = tirage.tirer('D'); return { affiche: '✗ ' + p, dit: [p, q.aideParlee || q.aide], indice: q.aide }; }
           const p = tirage.tirer('E');
           return { affiche: '✗ ' + p + ' La réponse : ' + M.ecrireReponse(q.reponse) + '.', dit: p, correction: matin ? null : q.correction };
-        }, () => {
-          k++;
-          if (k < questions.length) suivante();
-          else { n++; c.pied.prepend(bouton(n < options.items.length ? 'Suivant' : 'Terminer', item)); c.pied.firstChild.focus(); }
-        }, tirage);
-      };
-      c.pied.append(bouton('Arrêter', options.quitter, 'secondaire'));
-      suivante();
+        }, (r) => conclure(!!r.juste), tirage);
+      }
       c.h.focus();
     }
     item();

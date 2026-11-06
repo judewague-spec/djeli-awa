@@ -123,7 +123,71 @@
     return { juste: false, fini: true, premierCoup: false };
   }
 
+  // ---------- Séances question par question, à la façon d'Anki (consigne du 6 nov. 2026) ----------
+  // Une séance est une file d'entrées { carte, graine, etape, etat, essais, note, retour } : chaque question se refait
+  // à l'identique à partir de sa carte et de sa graine. La séance se sauve donc et se reprend exactement.
+
+  const entree = (carte, graine, etape) => ({ carte, graine, etape: etape || 3, etat: 'attente', essais: 0, note: null, retour: false });
+
+  /** Les entrées du matin : 5 automatismes tirés des notions vues. */
+  function entreesDuMatin(notionsVues, graine, nb = NB_MATIN) {
+    const alea = Hasard.creer(graine);
+    const sources = notionsVues.flatMap((n) => n.automatismes.map((a, i) => n.id + '|auto|' + i));
+    return tirer(alea, sources, nb).map((id, k) => entree(id, graine + k + 1, 3));
+  }
+
+  /** Les entrées du soir : 3 exercices tirés des notions vues ; un défi donne une entrée par question. */
+  function entreesDuSoir(notionsVues, graine, etapes = {}, notions = {}, nb = NB_SOIR) {
+    const alea = Hasard.creer(graine);
+    const sources = notionsVues.flatMap((n) => n.papierDuSoir.exercices.map((id) => ({ n, id })).concat(n.papierDuSoir.defi ? [{ n, id: null }] : []));
+    const l = [];
+    tirer(alea, sources, nb).forEach(({ n, id }, k) => {
+      const g = graine + k + 1, etape = etapes[n.id] || 3;
+      if (id !== null) { l.push(entree(n.id + '|ex|' + id, g, etape)); return; }
+      const nbq = n.defi.genere(contexte(n, Hasard.creer(g), etape)).questions.length;
+      for (let q = 0; q < nbq; q++) l.push(entree(n.id + '|defi|' + q, g, etape));
+    });
+    return l;
+  }
+
+  /** Les entrées d'une révision : les cartes dues, dans l'ordre donné (les plus en retard d'abord). */
+  function entreesDeRevision(ids, graine, etapes = {}) {
+    return ids.map((id, k) => entree(id, graine + k + 1, etapes[id.split('|')[0]] || 3));
+  }
+
+  /** La question d'une entrée, refaite à l'identique : { notion, titre, enonce (du défi), image, question }. */
+  function questionDe(e, notions) {
+    const [nid, sorte, cle] = e.carte.split('|');
+    const n = notions[nid];
+    if (!n) return null;
+    const ctx = contexte(n, Hasard.creer(e.graine), e.etape);
+    let q = null, enonce = '', image = null;
+    if (sorte === 'auto') { const a = n.automatismes[Number(cle)]; if (a) q = Object.assign({ texte: null }, a.genere(ctx)); }
+    else if (sorte === 'ex') { const g = n.exercices.find((x) => x.id === cle); if (g) { q = g.genere(ctx); q = Object.assign({ texte: q.enonce }, q); } }
+    else if (sorte === 'defi') { const d = n.defi.genere(ctx); q = d.questions[Number(cle)] || null; enonce = d.enonce; image = d.image; }
+    if (!q) return null;
+    return { notion: nid, titre: n.titre, enonce, image, question: Object.assign({}, q, { etat: e.etat, essais: e.essais, carte: e.carte }) };
+  }
+
+  /** Une séance neuve : { mode, entrees, i }. */
+  const creerSerie = (mode, entrees) => ({ mode, entrees, i: 0 });
+
+  /** Note l'entrée courante ; « À revoir » la remet dans la file, après 3 autres questions. */
+  function noterSerie(s, note, apres = 3) {
+    const e = s.entrees[s.i];
+    e.note = note;
+    if (note === 'revoir') s.entrees.splice(Math.min(s.entrees.length, s.i + 1 + apres), 0, Object.assign({}, e, { etat: 'attente', essais: 0, note: null, retour: true }));
+    return { carte: e.carte, note };
+  }
+
+  /** Passe à l'entrée suivante ; rend faux à la fin de la file. */
+  function avancerSerie(s) {
+    s.i++;
+    return s.i < s.entrees.length;
+  }
+
   return {
+    entreesDuMatin, entreesDuSoir, entreesDeRevision, questionDe, creerSerie, noterSerie, avancerSerie,
     NB_MATIN, NB_SOIR, QUESTIONS_PAR_ETAL, REVISION_APRES_TEST, PHRASES_DITES,
     phrasesDuTest, creerTest, etalSuivant, questionsDeLetal, noterEtal, bilan, serieDuMatin, serieDuSoir, repondre,
   };
