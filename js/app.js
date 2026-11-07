@@ -70,7 +70,6 @@
   const A = window.Avancement;
   const accueil = document.getElementById('accueil');
   const zoneMission = document.getElementById('mission');
-  const etatRevision = document.getElementById('etat-revision');
   // Les blocs écrits et leur quartier du village : « Les nombres » au marché, « La matière » à la cuisine…
   const GRAPHES = Object.values(window.Contenu.graphes);
   const quartierDu = (g) => g.quartier || (g.matiere === 'maths' ? 'maths' : null);
@@ -114,18 +113,16 @@
     return l.sort((a, b) => (a.echeance < b.echeance ? -1 : a.echeance > b.echeance ? 1 : 0)).map((x) => x.id);
   }
 
-  /** La prochaine mission ouverte d'un quartier, pas encore faite : une mission commencée d'abord, puis le chemin dans l'ordre. */
+  /** La prochaine mission ouverte d'un quartier, pas encore faite : une mission commencée d'abord, puis les bases, puis le programme
+      (dans chaque groupe, l'ordre des chemins). */
   function prochaineMission(etat, q, sauf) {
     const notions = notionsDuQuartier(q);
     const commencee = notions.find((n) => n.id !== sauf && etat.enCours.missions[n.id]);
     if (commencee) return commencee;
     const acquises = Object.keys(etat.progression.notions).filter((id) => etat.progression.notions[id].acquise).concat(sauf ? [sauf] : []);
-    for (const graphe of GRAPHES.filter((g) => quartierDu(g) === q)) {
-      const ouvertes = new Set(window.Prerequis.ouvertes(graphe, acquises));
-      const g = graphe.notions.find((x) => x.id !== sauf && ouvertes.has(x.id) && NOTIONS[x.id] && !etat.cartes[x.id] && !acquises.includes(x.id));
-      if (g) return NOTIONS[g.id];
-    }
-    return null;
+    const graphes = GRAPHES.filter((g) => quartierDu(g) === q);
+    const id = window.Prerequis.suivanteDansMatiere(graphes, acquises, (x) => x === sauf || !NOTIONS[x] || !!etat.cartes[x]);
+    return id ? NOTIONS[id] : null;
   }
 
   /** Les chemins du quartier ouvert, avec l'avancement de chaque notion et de la matière ; le bouton « Réviser ». */
@@ -142,11 +139,11 @@
     if (!quartierOuvert) return;
     const cartes = p.cartes;
     const acquises = Object.keys(etat.progression.notions).filter((id) => etat.progression.notions[id].acquise);
-    const dues = questionsDues(etat, quartierOuvert);
-    etatRevision.textContent = dues.length ? (dues.length === 1 ? 'Une question est à réviser aujourd’hui.' : dues.length + ' questions sont à réviser aujourd’hui.') : 'Rien à réviser aujourd’hui.';
-    // L'avancement de la matière, en haut.
+    // Sous « Jouer », une seule ligne : l'avancement de la matière, avec sa barre.
     const am = A.matiere(notionsDuQuartier(quartierOuvert), etat.cartesQ, etat.progression);
-    document.getElementById('avance-quartier').replaceChildren(window.Habillage.avancement(am.pourcent, 'Avancement de la matière : ' + A.enTexte(am.pourcent) + ' · ' + am.acquises + ' notion' + (am.acquises > 1 ? 's' : '') + ' acquise' + (am.acquises > 1 ? 's' : '') + ' sur ' + am.total + '.'));
+    document.getElementById('avance-quartier').replaceChildren(window.Habillage.avancement(am.pourcent, 'Avancement : ' + A.enTexte(am.pourcent)));
+    // Le matin et le soir ne servent qu'une fois des notions vues.
+    document.getElementById('zone-jour').hidden = !notionsVues(etat.progression).length;
     const zone = document.getElementById('chemins');
     zone.innerHTML = '';
     for (const graphe of GRAPHES.filter((g) => quartierDu(g) === quartierOuvert)) {
@@ -160,19 +157,14 @@
         const n = NOTIONS[g.id];
         const carte = cartes[g.id];
         const aReviser = !!carte && carte.echeance <= R.jourDe();
-        let note = '';
-        if (carte) note = aReviser ? 'À réviser aujourd’hui.' : 'Faite. Révision le ' + window.VueMission.jourEnLettres(carte.echeance) + '.';
-        else if (ouvertes.has(g.id)) note = 'Ouverte.';
-        const enCours = etat.enCours.missions[g.id];
-        if (enCours) note = 'Mission en cours, temps ' + (enCours.index + 1) + ' sur ' + window.Mission.TEMPS.length + '.';
         const acquise = acquises.includes(g.id);
         const pourcent = n ? A.notion(n, etat.cartesQ, etat.progression.notions[g.id]) : 0;
         const commun = { id: g.id, rang, numero: g.numero, titre: g.titre, matiere: quartierOuvert, aReviser, pourcent };
         if (n && (ouvertes.has(g.id) || acquise)) {
-          liste.append(window.Habillage.etapeChemin(Object.assign(commun, { etat: carte || acquise ? 'faite' : 'ouverte', note: note || 'Faite.', action: () => lancerMission(n) })));
+          liste.append(window.Habillage.etapeChemin(Object.assign(commun, { etat: carte || acquise ? 'faite' : 'ouverte', action: () => { nouvelleSeance(); lancerMission(n); } })));
         } else {
-          const avant = g.prerequis.filter((id) => !acquises.includes(id)).map((id) => graphe.notions.find((x) => x.id === id).numero);
-          liste.append(window.Habillage.etapeChemin(Object.assign(commun, { etat: 'fermee', note: 'S’ouvrira après ' + (avant.length > 1 ? 'les missions ' + avant.join(' et ') : 'la mission ' + avant[0]) + '.' })));
+          // Une étape fermée : un simple cadenas, lu « pas encore ouverte ».
+          liste.append(window.Habillage.etapeChemin(Object.assign(commun, { etat: 'fermee', noteSr: 'pas encore ouverte' })));
         }
       });
       zone.append(titre, liste);
@@ -181,7 +173,6 @@
     // Les tests de départ des blocs du quartier (SPEC.md, section 7).
     const zoneTests = document.getElementById('tests');
     zoneTests.innerHTML = '';
-    const notes = [];
     for (const graphe of GRAPHES.filter((g) => quartierDu(g) === quartierOuvert && TESTS[g.bloc])) {
       const tour = TESTS[graphe.bloc];
       const t = etat.tests[graphe.bloc];
@@ -189,11 +180,10 @@
       b.type = 'button';
       b.dataset.test = graphe.bloc;
       b.textContent = (t && t.fini ? 'Refaire : ' : t ? 'Reprendre : ' : '') + tour.titre;
-      b.addEventListener('click', () => lancerTest(graphe.bloc));
+      b.addEventListener('click', () => { nouvelleSeance(6); lancerTest(graphe.bloc); });
       zoneTests.append(b);
-      notes.push(t && t.fini ? tour.titre + ' : fait, ton chemin est prêt.' : tour.titre + ' : pour commencer, 15 à 20 minutes, en plusieurs fois si tu veux.');
     }
-    document.getElementById('etat-test').textContent = notes.join(' ');
+    document.getElementById('zone-tests').hidden = !zoneTests.childElementCount;
   }
 
   /** Sous chaque quartier du village, le pourcentage de sa matière. */
@@ -261,7 +251,11 @@
       if (puisVillage) { retourVillageEcran(true); montrerRevision(); }
       else {
         zoneQuartier.hidden = false;
-        montrerRevision().then(() => { const b = focusId && document.querySelector(focusId); if (b) b.focus(); else if (!ensuite) titreQuartier.focus(); });
+        montrerRevision().then(() => {
+          const b = focusId && document.querySelector(focusId);
+          if (b && b.closest('#voir-tout')) document.getElementById('voir-tout').open = true;
+          if (b) b.focus(); else if (!ensuite) document.getElementById('bouton-jouer').focus();
+        });
       }
       if (ensuite) ensuite();
     });
@@ -304,9 +298,18 @@
       b('Changer de matière', () => { finActivite(); fermerZone(null, true); }),
       b('Arrêter pour aujourd’hui', () => { finActivite(); fermerZone(null, true, () => dire('C’est noté : ta progression est gardée. À bientôt !')); }, 'secondaire'));
     let lancer = null;
-    if (dues.length) { info.textContent = 'Ensuite : tes révisions, ' + dues.length + ' question' + (dues.length > 1 ? 's' : '') + '. Elles commencent dans 3 secondes.'; lancer = () => lancerSerie('revision'); }
-    else if (prochaine) { info.textContent = 'Ensuite : la mission « ' + prochaine.titre + ' ». Elle commence dans 3 secondes.'; lancer = () => lancerMission(prochaine); }
-    else info.textContent = 'Tu as fini le chemin de cette matière. Bravo ! Choisis une autre matière au village.';
+    if (dues.length) { info.textContent = 'Ensuite : tes révisions. Elles commencent dans 3 secondes.'; lancer = () => lancerSerie('revision'); }
+    else if (prochaine) { info.textContent = 'Ensuite : « ' + prochaine.titre + ' ». Ça commence dans 3 secondes.'; lancer = () => lancerMission(prochaine); }
+    else info.textContent = 'Tu as fini le chemin de cette matière. Bravo !';
+    // Séance finie (5 questions) : pas de suite automatique, la petite récompense propose « Encore 5 ».
+    if (lancer && compte >= limite) {
+      const encore = b('Encore ' + limite, () => { nouvelleSeance(limite); finActivite(); fermerZone(null, false, lancer); });
+      encore.classList.add('encore');
+      info.textContent = '';
+      choix.prepend(encore);
+      setTimeout(() => encore.focus(), 0);
+      return [info, choix];
+    }
     if (lancer) {
       // La voix de Djéli d'abord ; puis 3 secondes ; puis la suite, si rien n'a été choisi entre-temps.
       Promise.resolve(voix).then(() => new Promise((ok) => setTimeout(ok, 3000))).then(() => {
@@ -325,44 +328,30 @@
   const titreQuartier = document.getElementById('titre-quartier');
   let quartierOuvert = null;
 
-  document.getElementById('djeli-accueil').replaceChildren(V.djeli(V.IMAGES.accueil.src, V.IMAGES.accueil.alt));
 
   // Voix de Djéli Awa : réglage oui / non, phrase d'accueil (lue si le navigateur le permet), boutons « Réécouter ».
   const Voix = window.Voix;
   Voix.monterReglage(document.getElementById('reglage-voix'));
-  const accrocheAccueil = document.querySelector('#accueil .accroche');
-  // La toute première fois, l'accueil du village ; ensuite, une phrase de la réserve H (SPEC.md, section 10).
-  try {
-    if (window.localStorage.getItem('djeli-deja-venue')) accrocheAccueil.textContent = window.Reserves.seance().tirer('H');
-    window.localStorage.setItem('djeli-deja-venue', 'oui');
-  } catch (e) { /* sans stockage, l'accueil du village */ }
-  accrocheAccueil.after(Voix.boutonReecouter(accrocheAccueil.textContent));
-  Voix.lire(accrocheAccueil.textContent);
-  const paroleQuartier = document.getElementById('parole-quartier');
-  paroleQuartier.parentElement.after(Voix.boutonReecouter(() => paroleQuartier.textContent));
-
   function ouvrirQuartier(id, sansVoix) {
     const q = V.quartier(id);
     if (!pile.includes('quartier')) empiler('quartier');
     document.title = q.lieu + ', ' + q.matiere.toLowerCase() + ' – Djéli Awa';
     quartierOuvert = id;
     window.Habillage.entrerMatiere(id);
-    document.getElementById('portrait-quartier').replaceChildren(window.Habillage.portrait().firstChild);
-    titreQuartier.textContent = q.lieu + ', ' + q.matiere.toLowerCase();
-    document.getElementById('djeli-quartier').replaceChildren(V.djeli(q.image, q.alt));
-    paroleQuartier.textContent = q.accueil;
-    if (!sansVoix) Voix.lire(q.accueil);
+    titreQuartier.textContent = q.matiere;
     // Un quartier montre ses chemins s'il a au moins un bloc écrit ; sinon, « bientôt ».
     const avecBloc = GRAPHES.some((g) => quartierDu(g) === id);
-    document.getElementById('missions').hidden = !avecBloc;
+    document.getElementById('voir-tout').hidden = !avecBloc;
+    document.getElementById('voir-tout').open = false;
     document.getElementById('missions-bientot').hidden = avecBloc;
-    document.getElementById('bouton-reviser').hidden = !avecBloc;
+    document.getElementById('bouton-jouer').hidden = !avecBloc;
     document.getElementById('avance-quartier').hidden = !avecBloc;
     const pret = montrerRevision();
     accueil.hidden = true;
     zoneQuartier.hidden = false;
     window.scrollTo(0, 0);
-    titreQuartier.focus();
+    // « Jouer » est le premier lu (consigne du 6 nov. 2026, 21 h 37).
+    (avecBloc ? document.getElementById('bouton-jouer') : titreQuartier).focus();
     return pret;
   }
 
@@ -432,16 +421,51 @@
   new MutationObserver(ajusterBarre).observe(boutonPause, { attributes: true, attributeFilter: ['hidden'] });
   ajusterBarre();
 
-  V.dessiner(document.getElementById('village'), ouvrirQuartier);
-  document.getElementById('bouton-retour-village').addEventListener('click', retourVillage);
-  document.getElementById('bouton-retour-village-haut').addEventListener('click', retourVillage);
-  document.getElementById('bouton-reviser').addEventListener('click', async () => {
+  V.matieres(document.getElementById('village'), ouvrirQuartier);
+
+  /** « Jouer » : sans rien demander, la reprise dans cette matière, sinon ses révisions dues, sinon la mission suivante
+      (les bases d'abord, puis le programme). Le bouton « Réviser » faisait doublon : il est retiré (21 h 46). */
+  async function jouer(q) {
+    nouvelleSeance();
     const etat = await etatOuVide();
-    if (questionsDues(etat, quartierOuvert).length) { lancerSerie('revision'); return; }
-    const n = prochaineMission(etat, quartierOuvert);
-    if (n) { dire('Rien à réviser aujourd’hui : on passe à la mission « ' + n.titre + ' ».'); lancerMission(n); }
-    else dire('Rien à réviser aujourd’hui, et le chemin de cette matière est fini. Bravo !');
-  });
+    const r = etat.reprise;
+    if (r && (r.quartier === q || (r.notion && matiereDe(r.notion) === q)) && repriseValable(etat, r)) { reprendreActivite(r); return; }
+    if (etat.enCours.series && etat.enCours.series['revision-' + q]) { lancerSerie('revision'); return; }
+    const commencee = notionsDuQuartier(q).find((n) => etat.enCours.missions[n.id]);
+    if (commencee) { lancerMission(commencee); return; }
+    if (questionsDues(etat, q).length) { lancerSerie('revision'); return; }
+    const n = prochaineMission(etat, q);
+    if (n) lancerMission(n);
+    else dire('Tu as fini le chemin de cette matière. Bravo !');
+  }
+  document.getElementById('bouton-jouer').addEventListener('click', () => jouer(quartierOuvert));
+
+  // ---------- Séances courtes : 5 questions au plus (6 au test de départ), puis une petite récompense ----------
+  let compte = 0, limite = 5;
+  function nouvelleSeance(n) { compte = 0; limite = n || 5; }
+  /** Après chaque question notée : la suite, ou, à la 5e, « Encore 5 » (le focus) et « Arrêter là » (comme Pause). */
+  function apresQuestion(continuer) {
+    compte++;
+    if (compte < limite || !zoneOuverte) { continuer(); return; }
+    const jeton = jetonZone;
+    // Une phrase de la réserve G qui ne dit pas au revoir (on peut continuer) : son son existe déjà.
+    const BRAVO = ['Belle séance ! Tu as bien travaillé.', 'Bravo pour ta persévérance !', 'Tu progresses à chaque séance, continue !', 'Superbe travail aujourd’hui !'];
+    const p = BRAVO[Math.floor(Math.random() * BRAVO.length)];
+    zoneMission.innerHTML = '';
+    const h = document.createElement('h2');
+    h.tabIndex = -1;
+    h.textContent = 'Bien joué !';
+    const choix = document.createElement('div');
+    choix.className = 'boutons suite-choix';
+    const bouton = (texte, action, classe) => { const x = document.createElement('button'); x.type = 'button'; x.textContent = texte; if (classe) x.className = classe; x.addEventListener('click', action); return x; };
+    const encore = bouton('Encore ' + limite, () => { if (jeton !== jetonZone) return; nouvelleSeance(limite); continuer(); }, 'encore');
+    choix.append(encore, bouton('Arrêter là', () => { if (jeton !== jetonZone) return; fermerZone(null, true, () => { montrerReprise(); dire('C’est noté : tout est gardé. À bientôt !'); }); }, 'secondaire'));
+    zoneMission.append(h, window.Habillage.bulle(p, Voix.boutonReecouter(p)), choix);
+    try { window.Habillage.confettis(); } catch (e) { /* sans confettis */ }
+    Voix.lire(p);
+    window.scrollTo(0, 0);
+    encore.focus();
+  }
 
   // ---------- Sons du bloc : gardés à son ouverture ; sans internet, le bloc se joue avec les sous-titres ----------
   const voixSignalee = new Set();
@@ -463,6 +487,8 @@
     ouvrirZone('test', '[data-test="' + bloc + '"]', { sorte: 'test', bloc });
     window.VueSeances.lancerTest(zoneMission, {
       tour: TESTS[bloc],
+      aujourdhui: R.jourDe(), cartesQ: etat.cartesQ, apresQuestion,
+      noterCarte(carte, note) { etat.cartesQ[carte] = R.programmerQuestion(etat.cartesQ[carte] || null, note, R.jourDe(), carte); ecrire('cartesQuestions', etat.cartesQ); },
       graphe: window.Contenu.graphes[bloc],
       notions: NOTIONS,
       etat: t0 && !t0.fini ? t0 : null,
@@ -499,11 +525,11 @@
           : window.Seances.entreesDeRevision(questionsDues(etat, quartierOuvert), graine, etapes);
       serie = window.Seances.creerSerie(mode, entrees);
     }
-    const focus = mode === 'revision' ? '#bouton-reviser' : '#bouton-' + mode;
+    const focus = mode === 'revision' ? '#bouton-jouer' : '#bouton-' + mode;
     ouvrirZone('serie', focus, { sorte: 'serie', mode });
     const sauver = (s) => { etat.enCours.series = etat.enCours.series || {}; etat.enCours.series[cle] = s; ecrire('enCours', etat.enCours); };
     window.VueSeances.lancerSerie(zoneMission, {
-      mode, serie, notions: NOTIONS, aujourdhui: R.jourDe(), cartesQ: etat.cartesQ,
+      mode, serie, notions: NOTIONS, aujourdhui: R.jourDe(), cartesQ: etat.cartesQ, apresQuestion,
       sauver,
       noterCarte(carte, note) { etat.cartesQ[carte] = R.programmerQuestion(etat.cartesQ[carte] || null, note, R.jourDe(), carte); ecrire('cartesQuestions', etat.cartesQ); },
       quitter() { finActivite(); fermerZone(focus); },
@@ -515,8 +541,8 @@
       },
     });
   }
-  document.getElementById('bouton-matin').addEventListener('click', () => lancerSerie('matin'));
-  document.getElementById('bouton-soir').addEventListener('click', () => lancerSerie('soir'));
+  document.getElementById('bouton-matin').addEventListener('click', () => { nouvelleSeance(); lancerSerie('matin'); });
+  document.getElementById('bouton-soir').addEventListener('click', () => { nouvelleSeance(); lancerSerie('soir'); });
 
   /** Les notions déjà vues : acquises au test ou faites en mission. */
   function notionsVues(progression) {
@@ -537,7 +563,7 @@
       etape: window.Mission.etapeVocabulaire(suivi.missions),
       aujourdhui: R.jourDe(),
       carteAvant: etat.cartes[notion.id] || null,
-      cartesQ: Object.assign({}, etat.cartesQ),
+      apresQuestion,
       perles: etat.progression.perles.map(matiereDe),
       points: etat.progression.points || 0,
       dire(texte, parle) { dire(texte); Voix.lire(parle || texte); },
@@ -565,19 +591,26 @@
   async function montrerReprise() {
     const etat = await etatOuVide();
     const r = etat.reprise;
-    const ok = r && ((r.sorte === 'mission' && NOTIONS[r.notion] && etat.enCours.missions[r.notion]) || (r.sorte === 'serie') || (r.sorte === 'test' && TESTS[r.bloc]));
+    const ok = repriseValable(etat, r);
     boutonReprendre.hidden = !ok;
     if (ok) boutonReprendre.querySelector('.reprendre-quoi').textContent = r.sorte === 'mission' ? 'La mission « ' + NOTIONS[r.notion].titre + ' »' : r.sorte === 'test' ? TESTS[r.bloc].titre : r.mode === 'matin' ? 'Les automatismes du matin' : r.mode === 'soir' ? 'Le papier du soir' : 'Tes révisions';
+  }
+  function repriseValable(etat, r) {
+    return !!r && ((r.sorte === 'mission' && NOTIONS[r.notion] && etat.enCours.missions[r.notion]) || (r.sorte === 'serie') || (r.sorte === 'test' && TESTS[r.bloc]));
+  }
+  function reprendreActivite(r) {
+    if (r.sorte === 'mission') lancerMission(NOTIONS[r.notion]);
+    else if (r.sorte === 'test') { limite = 6; lancerTest(r.bloc); }
+    else lancerSerie(r.mode);
   }
   boutonReprendre.addEventListener('click', async () => {
     const etat = await etatOuVide();
     const r = etat.reprise;
     if (!r) return;
+    nouvelleSeance(r.sorte === 'test' ? 6 : 5);
     const q = r.quartier || (r.notion ? matiereDe(r.notion) : 'maths');
     await ouvrirQuartier(q, true);
-    if (r.sorte === 'mission') lancerMission(NOTIONS[r.notion]);
-    else if (r.sorte === 'test') lancerTest(r.bloc);
-    else lancerSerie(r.mode);
+    reprendreActivite(r);
   });
 
   montrerRevision();
@@ -586,7 +619,7 @@
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(() => {
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-      etat.textContent = 'L’application marche aussi sans connexion. Les sons d’un bloc se gardent quand tu l’ouvres.';
+      // L'accueil ne montre que ce qui sert à apprendre : plus de phrase sur le fonctionnement hors connexion (6 nov. 2026).
     }).catch(() => { /* sans service worker, l'application marche quand même en ligne */ });
   }
 })();

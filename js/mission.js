@@ -8,9 +8,15 @@
 })(this, function (Hasard) {
   'use strict';
 
-  const TEMPS = ['accroche', 'manipulation', 'decouverte', 'vocabulaire', 'entrainement', 'defi', 'recompense'];
+  // On fait d'abord, on comprend ensuite (décision du 6 nov. 2026, 21 h 41) : l'accroche, tout de suite une première question
+  // (le premier exercice d'entraînement, le plus simple), puis la découverte et le vocabulaire comme explication, la manipulation,
+  // et les autres questions. Seul l'ordre change : aucun texte n'est réécrit.
+  const TEMPS = ['accroche', 'premiere', 'decouverte', 'vocabulaire', 'manipulation', 'entrainement', 'defi', 'recompense'];
+  /** L'ordre d'avant (missions sauvées avant le 6 nov. 2026, sans « v ») : pour les reprendre au même temps. */
+  const TEMPS_AVANT = ['accroche', 'manipulation', 'decouverte', 'vocabulaire', 'entrainement', 'defi', 'recompense'];
   const TITRES = {
     accroche: 'L’histoire',
+    premiere: 'Première question',
     manipulation: 'À toi de jouer',
     decouverte: 'L’astuce',
     vocabulaire: 'Les mots des matheux',
@@ -114,7 +120,8 @@
     defi.questions.forEach((q, k) => { q.essais = 0; q.etat = 'attente'; q.src = k; q.carte = idCarte(notion, 'defi', k); });
     return {
       notion, etape, ctx, graine,
-      anki: !!options.anki, // avec les quatre boutons d'Anki : une question n'est finie qu'une fois notée
+      anki: !!options.anki, // avec les quatre boutons d'Anki : une question n'est finie qu'une fois notée, et une seule réponse
+      essaisMax: options.anki ? 1 : 2,
       notes: [],
       index: 0,
       manipulationFaite: !aLEcran(notion), // sans manipulation à l'écran, la réflexion guidée suffit
@@ -158,6 +165,8 @@
       }
       case 'vocabulaire':
         return { texte: resoudre(n.vocabulaire.textes[m.etape - 1], ctx), etape: m.etape };
+      case 'premiere':
+        return { numero: 1, total: m.exercices.length, exercice: m.exercices[0], premiere: true };
       case 'entrainement': {
         const e = m.exercices[m.iExercice];
         return { numero: m.iExercice + 1, total: m.exercices.length, exercice: e };
@@ -172,6 +181,7 @@
   function peutContinuer(m) {
     switch (nomDuTemps(m)) {
       case 'manipulation': return m.manipulationFaite;
+      case 'premiere': return faite(m, m.exercices[0]);
       case 'entrainement': return m.exercices.every((e) => faite(m, e));
       case 'defi': return m.defi.questions.every((q) => faite(m, q));
       case 'recompense': return false;
@@ -182,6 +192,8 @@
   function suivant(m) {
     if (!peutContinuer(m)) throw new Error('le temps « ' + nomDuTemps(m) + ' » n’est pas terminé');
     m.index++;
+    // L'entraînement reprend après la première question, déjà faite.
+    if (nomDuTemps(m) === 'entrainement' && m.iExercice === 0 && m.exercices.length > 1 && faite(m, m.exercices[0])) m.iExercice = 1;
     return tempsCourant(m);
   }
 
@@ -192,12 +204,14 @@
   /** La question à laquelle on répond : l'exercice courant, ou la question courante du défi. */
   function questionCourante(m) {
     const nom = nomDuTemps(m);
+    if (nom === 'premiere') return m.exercices[0];
     if (nom === 'entrainement') return m.exercices[m.iExercice];
     if (nom === 'defi') return m.defi.questions[m.iQuestion];
     throw new Error('pas de question pendant « ' + nom + ' »');
   }
 
   function avancerQuestion(m) {
+    if (nomDuTemps(m) === 'premiere') return;
     if (nomDuTemps(m) === 'entrainement') { if (m.iExercice < m.exercices.length - 1) m.iExercice++; }
     else if (m.iQuestion < m.defi.questions.length - 1) m.iQuestion++;
   }
@@ -210,13 +224,14 @@
     if (q.etat !== 'attente') throw new Error('question déjà terminée');
     if (!q.reponse) throw new Error('cette question se rédige sur papier : utiliser validerGrille');
     q.essais++;
+    q.saisie = saisie;
     if (verifier(q.reponse, saisie)) {
       q.etat = 'juste';
       m.points += q.essais === 1 ? POINTS.premierEssai : POINTS.secondEssai;
       return { juste: true, fini: true, situation: situationJuste(m, q.essais > 1), correction: q.correction, attendu: ecrireReponse(q.reponse) };
     }
     m.serie = 0;
-    if (q.essais < 2) return { juste: false, fini: false, situation: 'D', aide: q.aide, aideParlee: q.aideParlee || q.aide };
+    if (q.essais < (m.essaisMax || 2)) return { juste: false, fini: false, situation: 'D', aide: q.aide, aideParlee: q.aideParlee || q.aide };
     q.etat = 'corrige';
     return { juste: false, fini: true, situation: 'E', correction: q.correction, attendu: ecrireReponse(q.reponse) };
   }
@@ -245,16 +260,16 @@
 
   /** Passe à la question suivante du temps courant ; rend faux s'il n'y en a plus. */
   function questionSuivante(m) {
-    const avant = nomDuTemps(m) === 'entrainement' ? m.iExercice : m.iQuestion;
+    const avant = rangCourant(m);
     avancerQuestion(m);
-    return (nomDuTemps(m) === 'entrainement' ? m.iExercice : m.iQuestion) !== avant;
+    return rangCourant(m) !== avant;
   }
 
   const faite = (m, q) => q.etat !== 'attente' && (!m.anki || !!q.note);
 
   /** La liste des questions du temps courant : exercices ou questions du défi. */
-  const listeCourante = (m) => (nomDuTemps(m) === 'entrainement' ? m.exercices : m.defi.questions);
-  const rangCourant = (m) => (nomDuTemps(m) === 'entrainement' ? m.iExercice : m.iQuestion);
+  const listeCourante = (m) => (nomDuTemps(m) === 'defi' ? m.defi.questions : m.exercices);
+  const rangCourant = (m) => (nomDuTemps(m) === 'premiere' ? 0 : nomDuTemps(m) === 'entrainement' ? m.iExercice : m.iQuestion);
 
   /** Note la question courante, une fois finie : « revoir », « difficile », « bien » ou « facile ».
       « À revoir » : la même question revient dans cette mission, après 3 autres questions (ou à la fin s'il en reste moins).
@@ -280,13 +295,13 @@
     return 'rien';
   }
 
-  const etatQuestion = (q) => ({ src: q.src, etat: q.etat, essais: q.essais, note: q.note || null, retour: !!q.retour, coches: q.coches || null });
+  const etatQuestion = (q) => ({ src: q.src, etat: q.etat, essais: q.essais, note: q.note || null, retour: !!q.retour, coches: q.coches || null, saisie: q.saisie === undefined ? null : q.saisie });
 
   /** L'état exact d'une mission, pour la reprendre plus tard : temps, question, réponses déjà données. */
   function sauver(m) {
     return {
-      notion: m.notion.id, graine: m.graine, etape: m.etape, index: m.index, manipulationFaite: m.manipulationFaite,
-      iExercice: m.iExercice, iQuestion: m.iQuestion, points: m.points, serie: m.serie || 0, notes: m.notes.slice(),
+      v: 2, notion: m.notion.id, graine: m.graine, etape: m.etape, index: m.index, manipulationFaite: m.manipulationFaite,
+      iExercice: m.iExercice, iQuestion: m.iQuestion, points: m.points, manipulationNote: m.manipulationNote || null, serie: m.serie || 0, notes: m.notes.slice(),
       exercices: m.exercices.map(etatQuestion), defi: m.defi.questions.map(etatQuestion), anki: m.anki,
     };
   }
@@ -294,11 +309,18 @@
   /** Reprend une mission sauvée : les questions sont refaites à l'identique (même graine), puis leur état est remis. */
   function reprendre(notion, s) {
     const m = creer(notion, { graine: s.graine, etape: s.etape, anki: s.anki });
-    const refaire = (originaux, etats) => etats.map((x) => Object.assign({}, originaux[x.src], { etat: x.etat, essais: x.essais, note: x.note || undefined, retour: x.retour, coches: x.coches || undefined }));
+    const refaire = (originaux, etats) => etats.map((x) => Object.assign({}, originaux[x.src], { etat: x.etat, essais: x.essais, note: x.note || undefined, retour: x.retour, coches: x.coches || undefined, saisie: x.saisie === null ? undefined : x.saisie }));
     m.exercices = refaire(m.exercices, s.exercices);
     m.defi.questions = refaire(m.defi.questions, s.defi);
-    Object.assign(m, { index: s.index, manipulationFaite: s.manipulationFaite, iExercice: s.iExercice, iQuestion: s.iQuestion, points: s.points, serie: s.serie, notes: s.notes.slice() });
+    Object.assign(m, { index: s.v ? s.index : Math.max(0, TEMPS.indexOf(TEMPS_AVANT[s.index])), manipulationFaite: s.manipulationFaite, iExercice: s.iExercice, iQuestion: s.iQuestion, points: s.points, manipulationNote: s.manipulationNote || undefined, serie: s.serie, notes: s.notes.slice() });
     return m;
+  }
+
+  /** La manipulation réussie, notée avec les quatre boutons : sa note compte pour la carte de la notion entière
+      (elle ne se refait pas seule en révision, ce n'est donc pas une carte de question). */
+  function noterManipulation(m, note) {
+    m.manipulationNote = note;
+    m.notes.push({ carte: idCarte(m.notion, 'manip', 0), note });
   }
 
   /** Les cartes de question d'une notion (générateurs de l'entraînement, questions du défi), pour l'avancement. */
@@ -339,6 +361,6 @@
     mot, etapeVocabulaire, lireNombre, verifier, ecrireReponse, pgcd,
     creer, tempsCourant, contenu, peutContinuer, suivant, marquerManipulation,
     repondre, validerGrille, questionSuivante, terminer,
-    noter, avancer, sauver, reprendre, cartesDeNotion, idCarte,
+    noter, avancer, noterManipulation, TEMPS_AVANT, sauver, reprendre, cartesDeNotion, idCarte,
   };
 });

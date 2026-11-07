@@ -35,5 +35,27 @@
     return ouvertes(graphe, acquises)[0] || null;
   }
 
-  return { verifier, ouvertes, prochaine };
+  /** Les notions de base d'un bloc (décision du 6 nov. 2026) : celles des années d'avant (classe « 5e » ou « 4e » dans le graphe,
+      repères de PROGRAMME.md), et tous leurs prérequis du chemin. Les autres (3e, cycle 4, ancien programme) sont le programme. */
+  function bases(graphe) {
+    const parId = new Map(graphe.notions.map((x) => [x.id, x]));
+    const b = new Set();
+    const ajouter = (id) => { if (b.has(id) || !parId.has(id)) return; b.add(id); parId.get(id).prerequis.forEach(ajouter); };
+    graphe.notions.filter((x) => /^(5e|4e)$/.test(x.classe)).forEach((x) => ajouter(x.id));
+    return b;
+  }
+
+  /** La prochaine notion à travailler parmi plusieurs blocs d'une matière : les bases d'abord, puis le programme ;
+      dans chaque groupe, l'ordre des blocs puis du chemin. faite(id) : vrai si la notion est déjà faite ou commencée ailleurs. */
+  function suivanteDansMatiere(graphes, acquises, faite) {
+    const candidates = [];
+    const base = new Set();
+    for (const g of graphes) {
+      bases(g).forEach((id) => base.add(id));
+      for (const id of ouvertes(g, acquises)) if (!faite || !faite(id)) candidates.push(id);
+    }
+    return candidates.find((id) => base.has(id)) || candidates[0] || null;
+  }
+
+  return { verifier, ouvertes, prochaine, bases, suivanteDansMatiere };
 });

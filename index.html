@@ -25,47 +25,33 @@
   <main id="vue" tabindex="-1">
    <div id="accueil">
     <p class="titre-accueil" aria-hidden="true">Djéli Awa</p>
-    <div id="djeli-accueil"></div>
-    <p class="accroche">Bienvenue au village&#8239;! Ici, les maths et les sciences partent de ta vie de tous les jours.</p>
-
-    <button type="button" id="bouton-reprendre" class="reprendre" hidden><span class="reprendre-titre">Reprendre là où tu t’es arrêtée</span><span class="reprendre-quoi"></span></button>
-
+    <button type="button" id="bouton-reprendre" class="reprendre" hidden><span class="reprendre-titre">Reprendre</span><span class="reprendre-quoi"></span></button>
     <section aria-labelledby="titre-village">
-      <h2 id="titre-village" tabindex="-1">Le village</h2>
-      <p>Suis le chemin et choisis un quartier. Djéli Awa t’attend dans chacun.</p>
+      <h2 id="titre-village" tabindex="-1">Choisis ta matière</h2>
       <div id="village"></div>
     </section>
-
     <p id="etat-hors-connexion" class="etat"></p>
    </div>
 
    <section id="quartier" aria-labelledby="titre-quartier" hidden>
     <h2 id="titre-quartier" tabindex="-1"></h2>
-    <div class="boutons">
-      <button type="button" id="bouton-reviser">Réviser</button>
-      <button type="button" id="bouton-retour-village-haut" class="secondaire">Retour au village</button>
-    </div>
+    <button type="button" id="bouton-jouer" class="jouer">Jouer</button>
     <div id="avance-quartier" class="avance-matiere"></div>
-    <div id="djeli-quartier"></div>
-    <div class="parole"><div class="portrait" id="portrait-quartier" aria-hidden="true"></div><div class="bulle"><p><span class="qui">Djéli Awa : </span><span id="parole-quartier"></span></p></div></div>
-
-    <section id="missions" aria-labelledby="titre-jour" hidden>
-      <h3 id="titre-jour">Chaque jour</h3>
-      <div id="tests" class="boutons"></div>
-      <div class="boutons">
-        <button type="button" id="bouton-matin">Automatismes du matin</button>
-        <button type="button" id="bouton-soir">Papier du soir</button>
-      </div>
-      <p id="etat-test" class="etat"></p>
-      <p>Chaque mission dure environ 7 minutes, avec ton cahier. Une mission s’ouvre quand celles qu’il faut avant sont faites.</p>
-      <p id="etat-revision" class="etat"></p>
-      <div id="chemins"></div>
-    </section>
     <p id="missions-bientot" hidden>Les missions de ce quartier arrivent bientôt.</p>
-
-    <div class="boutons pied">
-      <button type="button" id="bouton-retour-village" class="secondaire">Retour au village</button>
-    </div>
+    <details id="voir-tout" class="voir-tout">
+      <summary>Voir tout</summary>
+      <section id="missions" aria-label="Tout le quartier">
+        <div id="zone-tests">
+          <p>Tu connais déjà ? Petit test, environ 5 minutes.</p>
+          <div id="tests" class="boutons"></div>
+        </div>
+        <div class="boutons" id="zone-jour">
+          <button type="button" id="bouton-matin">Automatismes du matin</button>
+          <button type="button" id="bouton-soir">Papier du soir</button>
+        </div>
+        <div id="chemins"></div>
+      </section>
+    </details>
    </section>
    <section id="mission" aria-label="Mission" hidden></section>
 
@@ -145,6 +131,7 @@
   <script src="js/vue-mission.js"></script>
   <script src="js/vue-seances.js"></script>
   <script src="js/vue-anki.js"></script>
+  <script src="js/vue-question.js"></script>
   <script src="js/habillage.js"></script>
   <script src="js/village.js"></script>
   <script src="js/voix-phrases.js"></script>

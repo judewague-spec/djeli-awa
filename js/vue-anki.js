@@ -1,5 +1,5 @@
 /* Les quatre boutons d'Anki, après une réponse juste (consigne du 6 nov. 2026) : « À revoir », « Difficile », « Bien », « Facile ».
-   Chacun dit sous son nom quand la question reviendra ; le focus va sur « Bien » ; les touches 1, 2, 3 et 4 les choisissent.
+   Seulement les quatre mots : les délais sont calculés en coulisse (consigne du 6 nov. 2026, 21 h 37) ; le focus va sur « Bien » ; les touches 1, 2, 3 et 4 les choisissent.
    Après une réponse fausse : un seul bouton, « J'ai compris, question suivante ». L'écran défile pour les montrer en entier. */
 (function (racine) {
   'use strict';
@@ -38,7 +38,7 @@
     const zone = document.createElement('div');
     zone.className = 'anki';
     zone.setAttribute('role', 'group');
-    zone.setAttribute('aria-label', 'Quand revoir cette question ? Touches 1 à 4.');
+    zone.setAttribute('aria-label', 'Comment c’était ?');
     let fait = false;
     const prendre = (note) => {
       if (fait) return;
@@ -49,7 +49,7 @@
     };
     const parNote = {};
     R.NOTES.forEach((note) => {
-      const b = bouton(R.LIBELLES[note], delais[note], 'anki-' + note + (note === 'bien' ? ' defaut' : ''));
+      const b = bouton(R.LIBELLES[note], delais ? delais[note] : null, 'anki-' + note + (note === 'bien' ? ' defaut' : ''));
       b.dataset.note = note;
       b.addEventListener('click', () => prendre(note));
       parNote[note] = b;
@@ -71,9 +71,9 @@
   }
 
   /** Après une réponse fausse : « J'ai compris, question suivante ». */
-  function compris(action) {
+  function compris(action, texte) {
     oublierClavier();
-    const b = bouton('J’ai compris, question suivante', null, 'compris');
+    const b = bouton(texte || 'J’ai compris, question suivante', null, 'compris');
     let fait = false;
     b.addEventListener('click', () => { if (fait) return; fait = true; b.disabled = true; action(); });
     b.montrer = () => montrer(b, b);

@@ -100,6 +100,24 @@
     return el('figure', { classe: 'djeli' }, [image(src, alt, 'silhouette-djeli')]);
   }
 
+  /** Les cinq matières en grands boutons, chacune avec son pourcentage (accueil, décision du 6 nov. 2026, 21 h 45). */
+  function matieres(conteneur, choisir) {
+    const liste = el('ul', { classe: 'matieres' });
+    for (const q of QUARTIERS) {
+      const b = el('button', { type: 'button', classe: 'matiere-bouton forme-' + q.forme, 'data-quartier': q.id }, [
+        el('span', { classe: 'quartier-forme', 'aria-hidden': 'true' }),
+        el('span', { classe: 'quartier-matiere', texte: q.matiere }),
+        el('span', { classe: 'sr', texte: ', ' }),
+        el('span', { classe: 'quartier-avance' }),
+      ]);
+      b.style.setProperty('--couleur', q.couleur);
+      b.style.setProperty('--couleur-texte', q.texte);
+      b.addEventListener('click', () => choisir(q.id));
+      liste.appendChild(el('li', {}, [b]));
+    }
+    conteneur.replaceChildren(liste);
+  }
+
   /** Le plan du village dans conteneur ; choisir(id) est appelé quand on touche un quartier. */
   function dessiner(conteneur, choisir) {
     const paysage = window.matchMedia('(orientation: landscape) and (min-width: 40rem)');
@@ -153,5 +171,5 @@
     if (typeof ResizeObserver === 'function') new ResizeObserver(() => requestAnimationFrame(caler)).observe(plan);
   }
 
-  return { QUARTIERS, IMAGES, toutesLesImages, quartier, image, djeli, dessiner };
+  return { QUARTIERS, IMAGES, toutesLesImages, quartier, image, djeli, dessiner, matieres };
 });

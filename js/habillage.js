@@ -76,14 +76,11 @@
     ]);
   }
 
-  // ---------- Pastilles ----------
-  /** Les temps de la mission, pour les yeux ; le lecteur d'écran garde « temps n sur 7 ». */
-  function pastilles(numero, total) {
-    const o = el('div', { classe: 'pastilles', 'aria-hidden': 'true' });
-    for (let i = 1; i <= total; i++) {
-      o.append(el('span', { classe: 'pastille ' + (i < numero ? 'faite' : i === numero ? 'encours' : ''), texte: i < numero ? '✓' : i === numero ? String(i) : '' }));
-    }
-    return o;
+  // ---------- Progression ----------
+  /** Une barre de progression simple, sans texte, pour les yeux seulement (consigne du 6 nov. 2026, 21 h 38). */
+  function progression(fait, total) {
+    const p = total ? Math.round((100 * Math.max(0, Math.min(fait, total))) / total) : 0;
+    return el('div', { classe: 'progression', 'aria-hidden': 'true' }, [el('span', { classe: 'progression-plein', style: 'width:' + p + '%' })]);
   }
 
   // ---------- Confirmation ----------
@@ -166,6 +163,7 @@
     const nom = el('span', { classe: 'etape-nom' }, [el('span', { classe: 'sr', texte: o.numero + '. ' }), o.titre]);
     // L'avancement de la notion, sous son nom (consigne du 6 nov. 2026).
     if (typeof o.pourcent === 'number') nom.append(el('span', { classe: 'sr', texte: ' : ' }), avancement(o.pourcent));
+    if (o.noteSr) nom.append(el('span', { classe: 'sr', texte: ', ' + o.noteSr }));
     if (o.action) {
       const b = el('button', { type: 'button', classe: 'pierre-bouton', 'data-notion': o.id }, [pierre(o.etat, o.numero, o.matiere), el('span', { classe: 'etape-texte' }, [nom, o.note ? el('span', { classe: 'note', texte: o.note }) : null])]);
       b.addEventListener('click', o.action);
@@ -294,5 +292,5 @@
     return scene;
   }
 
-  racine.Habillage = { el, matiere, entrerMatiere, perle, icone, portrait, bulle, pastilles, confirmer, choisir, avancement, etapeChemin, tracerChemin, sceneRecompense, FORMES, SERPENT };
+  racine.Habillage = { el, matiere, entrerMatiere, perle, icone, portrait, bulle, progression, confirmer, choisir, avancement, etapeChemin, tracerChemin, sceneRecompense, FORMES, SERPENT };
 })(typeof window !== 'undefined' ? window : globalThis);

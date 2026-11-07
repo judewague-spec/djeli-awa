@@ -295,3 +295,48 @@ header.barre.barre-icones .mot { position: absolute; width: 1px; height: 1px; ov
 .plan.plan-liste .quartiers li { position: static; transform: none; width: auto; max-width: none; margin: 0 0 0.6rem; }
 .plan.plan-liste .plan-fond { display: none; }
 .plan.plan-liste { padding: 0; }
+
+/* ---------- Une application simple (consignes du 6 nov. 2026, 21 h 30 à 21 h 51) ---------- */
+/* Accueil : « Choisis ta matière », cinq grands boutons, chacun avec son pourcentage. */
+.matieres { list-style: none; margin: 0.5rem 0 1rem; padding: 0; display: grid; gap: 0.75rem; }
+button.matiere-bouton { display: flex; align-items: center; gap: 0.75rem; width: 100%; min-height: 64px; font-size: 1.2rem; text-align: left; background: var(--couleur); color: var(--couleur-texte); border-color: var(--couleur); }
+button.matiere-bouton .quartier-matiere { flex: 1; font-weight: 800; }
+button.matiere-bouton .quartier-avance { font-weight: 700; white-space: nowrap; }
+button.matiere-bouton .quartier-forme { position: static; width: 1.6rem; height: 1.6rem; flex: none; background: var(--couleur-texte); opacity: 0.85; }
+/* Quartier : un seul grand bouton « Jouer », puis une ligne d'avancement ; le reste derrière « Voir tout ». */
+button.jouer { display: block; width: 100%; min-height: 72px; margin: 0.75rem 0 0.5rem; font-size: 1.5rem; font-weight: 800; }
+.voir-tout { margin-top: 1.5rem; }
+.voir-tout > summary, details.en-savoir-plus > summary, details.explication > summary { cursor: pointer; min-height: 48px; display: flex; align-items: center; font-weight: 700; color: var(--couleur-accent, var(--couleur)); }
+.voir-tout > summary { font-size: 1.1rem; }
+details.en-savoir-plus, details.explication { margin: 0.4rem 0; }
+.bulle details.en-savoir-plus p { margin: 0.25rem 0 0; }
+/* Mission : une barre de progression simple, sans texte. */
+.progression { height: 0.6rem; border-radius: 1rem; background: var(--couleur-pale, #EADBC8); overflow: hidden; }
+.progression-plein { display: block; height: 100%; background: var(--couleur); border-radius: 1rem; transition: width 0.3s ease-out; }
+/* Réponses à choix : boutons radio ; le choix est marqué « Ton choix » ; après « Valider », ✓ ou ✗ et « Bonne réponse ». */
+fieldset.choix-radio { border: 0; margin: 0.75rem 0; padding: 0; display: grid; gap: 0.5rem; min-width: 0; }
+label.choix-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; min-height: 56px; padding: 0.6rem 0.9rem; border: 2px solid var(--couleur-accent, var(--couleur)); border-radius: 0.9rem; background: var(--carte); color: var(--texte); cursor: pointer; box-shadow: var(--ombre); }
+label.choix-ligne input { width: 1.4rem; height: 1.4rem; margin: 0; flex: none; accent-color: var(--couleur); }
+label.choix-ligne .choix-texte { flex: 1; min-width: 8rem; }
+label.choix-ligne .choix-marque { font-weight: 800; }
+label.choix-ligne.choisi { border-width: 5px; padding: 0.45rem 0.75rem; background: var(--couleur-pale, #F6EBDD); }
+label.choix-ligne:focus-within { outline: 3px solid var(--texte); outline-offset: 2px; }
+label.choix-ligne.valide { cursor: default; box-shadow: none; }
+label.choix-ligne.valide input:disabled { opacity: 1; }
+label.choix-ligne.valide.bonne { border-color: var(--juste-bord); background: var(--juste-fond); color: var(--juste-texte); border-width: 5px; }
+label.choix-ligne.valide.choisi:not(.bonne) { border-color: var(--faux-bord); background: var(--faux-fond); color: var(--faux-texte); }
+button.valider { display: block; width: 100%; min-height: 56px; font-size: 1.1rem; }
+button.valider:disabled { opacity: 0.55; cursor: not-allowed; }
+form.saisie input[readonly] { background: var(--carte); color: var(--texte); opacity: 1; }
+.ta-reponse { font-weight: 700; margin: 0.5rem 0; }
+/* Le verdict : « Juste ! » ou « Pas encore », toujours avec une icône et un mot. */
+.verdict .verdict-mot { font-size: 1.35rem; font-weight: 800; }
+.verdict .bonne-reponse { font-weight: 800; margin-top: 0.4rem; }
+.verdict .verdict-phrase { font-weight: 600; }
+.correction-courte { margin: 0.6rem 0; }
+.correction-courte > p { margin: 0; font-weight: 600; }
+.fin-manipulation { margin-top: 0.75rem; }
+button.encore { font-size: 1.15rem; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) label.choix-ligne.choisi { background: rgba(255, 255, 255, 0.08); }
+}
